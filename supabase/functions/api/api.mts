@@ -137,6 +137,12 @@ export async function handleApi(req: Request): Promise<Response> {
         if (method === "GET") return Response.json(await db.listEvents(Object.fromEntries(url.searchParams)));
         if (method === "POST") { const e = await db.createEvent(await eventInput(), who); sync(e.id); return Response.json(e); }
       }
+      // WhatsApp Schedule：已发送的讯息从清单删掉
+      if (seg[2] === "wa-hide" && method === "POST") {
+        if (!canWhatsApp(me)) throw new HttpError(403, "没有权限");
+        if (!(await db.hideCustomerMessage(id))) throw new HttpError(400, "还没发送的讯息不能删除");
+        return Response.json({ ok: true });
+      }
       // 任务清单：打勾完成（只在 App 里）
       if (seg[2] === "done" && method === "POST") {
         if (!(await db.setEventDone(id, !!(await body()).done, who))) notFound();

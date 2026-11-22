@@ -659,3 +659,6 @@ button:active:not(:disabled), .item:active, .wk-item:active { transform: scale(.
 .btn.primary:hover:not(:disabled) { filter: brightness(1.12); background: var(--accent); }
 .btn.danger { background: #d64545; border-color: #d64545; color: #fff; }
 .btn.danger:hover:not(:disabled) { background: #b83232; }
+
+.ww-side { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.ww-del { margin: 0; }

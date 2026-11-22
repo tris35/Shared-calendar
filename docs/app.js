@@ -1,5 +1,5 @@
 // ===================== Shared Calendar / 共享日历 =====================
-import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=48";
+import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=49";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -1106,7 +1106,7 @@ async function renderWeek() {
 // 这星期的 WhatsApp 客户讯息：谁、什么时候发、发了没有
 function renderWeekWa(evs) {
   const box = $("#weekWa");
-  const list = evs.filter((e) => e.customer_phone && e.customer_note);
+  const list = evs.filter((e) => e.customer_phone && e.customer_note && !e.customer_hidden);
   box.hidden = !state.me?.can_whatsapp;
   if (box.hidden) return;
   const sendAt = (e) => { const d = new Date(e.start); d.setDate(d.getDate() - 1); d.setHours(16, 0, 0, 0); return d; }; // 前一天下午 4 点
@@ -1123,10 +1123,20 @@ function renderWeekWa(evs) {
       <div class="ww-main"><b>${esc(e.customer_name || e.customer_phone)}</b>${e.customer_name ? ` <span class="muted">${esc(e.customer_phone)}</span>` : ""}
         <div class="s">${esc(e.title)} · ${esc(new Date(e.start).toLocaleDateString(locale(), { weekday: "short", day: "numeric", month: "short" }))}</div>
         <div class="ww-note">${esc(e.customer_note)}</div></div>
-      <span class="ww-status ${cls}">${esc(txt)}</span></li>`;
+      <div class="ww-side"><span class="ww-status ${cls}">${esc(txt)}</span>
+        ${e.customer_sent_at ? `<button type="button" class="del-btn ww-del" data-wa-hide="${e.id}">${esc(t("delete"))}</button>` : ""}</div></li>`;
   }).join("")}</ul>` : `<p class="hint">${esc(t("ww_none"))}</p>`);
 }
-$("#weekWa").addEventListener("click", (ev) => { const li = ev.target.closest(".ww-item"); if (li) openDetail(Number(li.dataset.id)); });
+$("#weekWa").addEventListener("click", async (ev) => {
+  const del = ev.target.closest("[data-wa-hide]");
+  if (del) { // 已发送 → 从清单删掉（行程保留）
+    ev.stopPropagation();
+    if (!(await askConfirm(t("ww_del_confirm"), t("delete")))) return;
+    try { await api(`/api/events/${del.dataset.waHide}/wa-hide`, { method: "POST", body: {} }); renderWeek(); } catch (e) { toast(e.message); }
+    return;
+  }
+  const li = ev.target.closest(".ww-item"); if (li) openDetail(Number(li.dataset.id));
+});
 $("#weekPrev").onclick = () => { state.weekOffset--; renderWeek(); };
 $("#weekNext").onclick = () => { state.weekOffset++; renderWeek(); };
 $("#weekFilters").addEventListener("click", (ev) => {

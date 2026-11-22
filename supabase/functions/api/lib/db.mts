@@ -98,6 +98,10 @@ export async function createEvent(e: any, author?: string | null) {
 const FIELD_CODES: Record<string, string> = { title: "title", start: "time", end: "time", all_day: "time", notes: "notes", label: "label", member_id: "member", remind: "remind",
   customer_phone: "customer", customer_note: "customer", customer_auto: "customer_auto" };
 
+/** WhatsApp Schedule：把已发送的讯息从清单拿掉 */
+export async function hideCustomerMessage(id: number) {
+  return (await sql`UPDATE events SET customer_hidden = TRUE WHERE id = ${id} AND customer_sent_at IS NOT NULL RETURNING id`).length > 0;
+}
 /** 任务清单：打勾 / 取消打勾（只在 App 里） */
 export async function setEventDone(id: number, done: boolean, who: string | null) {
   const r = await sql`UPDATE events SET done_at = ${done ? new Date().toISOString() : null}, done_by = ${done ? who : null} WHERE id = ${id} RETURNING id`;
