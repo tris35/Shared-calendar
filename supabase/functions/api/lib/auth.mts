@@ -58,8 +58,8 @@ export async function signup(body: any) {
   return { token: await makeToken(user), user: publicUser(user) };
 }
 
-// ---------- 忘记密码：寄 6 位数验证码到 Gmail（用 Brevo 寄信） ----------
-const codeHash = (email: string, code: string) => crypto.createHash("sha256").update(`${email}:${code}:${env("BREVO_API_KEY") || ""}`).digest("hex");
+// ---------- 忘记密码：寄 6 位数验证码到 Gmail（用 App 的 Gmail 寄；没设定就用 Brevo） ----------
+const codeHash = (email: string, code: string) => crypto.createHash("sha256").update(`${email}:${code}:${env("SUPABASE_SERVICE_ROLE_KEY") || "pepper"}`).digest("hex");
 const RESET_TEXT: Record<string, { subject: string; body: (c: string) => string }> = {
   en: { subject: "Your password reset code", body: (c) => `Your code to reset your Shared Calendar password is:\n\n${c}\n\nIt expires in 5 minutes. If you didn't ask for this, you can ignore this email.` },
   zh: { subject: "重设密码验证码", body: (c) => `你的共享日历重设密码验证码：\n\n${c}\n\n5 分钟内有效。如果不是你要求的，可以不理会这封信。` },
@@ -67,6 +67,18 @@ const RESET_TEXT: Record<string, { subject: string; body: (c: string) => string 
   ms: { subject: "Kod set semula kata laluan", body: (c) => `Kod untuk set semula kata laluan Shared Calendar anda:\n\n${c}\n\nSah selama 5 minit. Jika anda tidak memintanya, abaikan e-mel ini.` },
 };
 async function sendResetMail(to: string, code: string, lang: string) {
+  const tx0 = RESET_TEXT[lang] || RESET_TEXT.en;
+  const text0 = tx0.body(code);
+  const html0 = `<div style="font-family:sans-serif;font-size:16px">${text0.replace(code, `<b style="font-size:28px;letter-spacing:4px">${code}</b>`).replace(/\n/g, "<br>")}</div>`;
+  // 1) 用 Gmail 寄（Google「应用程式密码」；Supabase 不能用 587 端口，所以用 465 SSL）
+  const gUser = (env("GMAIL_USER") || "").trim(), gPass = (env("GMAIL_APP_PASSWORD") || "").replace(/\s+/g, "");
+  if (gUser && gPass) {
+    const nodemailer = (await import("nodemailer")).default;
+    const tr = nodemailer.createTransport({ host: "smtp.gmail.com", port: 465, secure: true, auth: { user: gUser, pass: gPass } });
+    try { await tr.sendMail({ from: `"Shared Calendar" <${gUser}>`, to, subject: tx0.subject, text: text0, html: html0 }); return; }
+    catch (e: any) { console.error("gmail", e?.code || "", e?.responseCode || "", String(e?.message || e).slice(0, 300)); throw new AuthError("寄信失败，请稍后再试", 502); }
+  }
+  // 2) 或用 Brevo
   const key = (env("BREVO_API_KEY") || "").replace(/\s+/g, ""); // 去掉复制时多出的空白 / 换行
   const from = (env("BREVO_SENDER") || fixedAdmins()[0] || "").trim();
   if (!key || !from) throw new AuthError("忘记密码功能还没设定好，请联络管理员", 503);
