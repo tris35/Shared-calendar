@@ -1,24 +1,24 @@
 :root {
-  --bg: #fffbea;          /* 奶油白 */
+  --bg: #f4f6fb;
   --surface: #ffffff;
-  --surface-2: #fff6d6;
-  --text: #3a2f1c;
-  --muted: #8a7552;
-  --border: #f3dfa6;
-  --accent: #e8a33d;      /* 暖橘黄：按钮 / 今天 */
+  --surface-2: #eaf0f9;
+  --text: #1b2a44;
+  --muted: #5b6b86;
+  --border: #d3dcec;
+  --accent: #1f3a68;      /* 海军蓝：按钮 / 今天 */
   --accent-text: #ffffff;
   --danger: #c4483b;
-  --today: #dcebff;       /* 今天：浅蓝，和暖色对比 */
-  --sun: #d0473a;
-  --sat: #3566b0;
-  --shadow: 0 6px 24px rgba(120, 80, 20, .12);
-  --cell: #fffdf5;
-  --cell-sun: #fffdf5;
-  --cell-sat: #fffdf5;
-  --cell-other: #f6efdc;  /* 上/下个月：素色，比这个月深一点 */
-  --grid: #ecd391;
-  --head: linear-gradient(120deg, #eaa63a 0%, #dc8d22 100%); /* 金橘色标题列 */
-  --weekdays: #fff2b8;
+  --today: #e1eaf8;
+  --sun: #c8453a;
+  --sat: #2d5fa8;
+  --shadow: 0 6px 24px rgba(20, 35, 70, .14);
+  --cell: #ffffff;
+  --cell-sun: #ffffff;
+  --cell-sat: #ffffff;
+  --cell-other: #eef1f6;
+  --grid: #cdd7e8;
+  --head: linear-gradient(120deg, #16294d 0%, #24437a 100%);
+  --weekdays: #e6ecf6;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -424,3 +424,11 @@ body.locked > .topbar, body.locked > main, body.locked > .tabbar { display: none
 /* 标题列文字：粗一点 + 淡淡阴影，在金色上比较清楚 */
 :root:not([data-theme="dark"]) .topbar h1 { font-weight: 800; font-size: 20px; letter-spacing: .2px; text-shadow: 0 1px 2px rgba(110, 60, 0, .45); }
 :root:not([data-theme="dark"]) .topbar .icon-btn { font-weight: 800; text-shadow: 0 1px 2px rgba(110, 60, 0, .45); }
+
+/* 海军蓝版：金色点缀 */
+:root:not([data-theme="dark"]) .topbar .today-btn { color: #1f3a68; }
+:root:not([data-theme="dark"]) .topbar h1 { text-shadow: none; }
+:root:not([data-theme="dark"]) .topbar { border-bottom: 3px solid #e8b04a; }
+.fab { background: #e8b04a !important; color: #1b2a44 !important; }
+.tabbar button.active { color: #1f3a68; }
+.day.today .num { background: #1f3a68; }
