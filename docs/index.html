@@ -16,7 +16,7 @@
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
   <meta name="mobile-web-app-capable" content="yes" />
   <title>Shared Calendar</title>
-  <link rel="stylesheet" href="style.css?v=62" />
+  <link rel="stylesheet" href="style.css?v=63" />
 </head>
 <body class="locked">
   <!-- 登录 / 注册（打开 App 前） -->
@@ -111,6 +111,8 @@
           <div class="wa-pick">
             <label><span data-i18n="wp_date"></span><input id="wpDate" type="date" /></label>
             <label><span data-i18n="wp_event"></span><select id="wpEvent"></select></label>
+            <label><span data-i18n="f_customer_name"></span><input id="wpName" autocomplete="off" maxlength="80" data-i18n-placeholder="f_customer_name_ph" /></label>
+            <label><span data-i18n="f_customer_phone"></span><input id="wpPhone" type="tel" inputmode="tel" autocomplete="off" placeholder="012-345 6789" /></label>
           </div>
           <p class="wa-sub" data-i18n="dg_prev_customer"></p>
           <pre id="wtPreview" class="digest-preview"></pre>
@@ -459,8 +461,8 @@
   </dialog>
 
   <div id="toast" class="toast" role="status"></div>
-  <script src="config.js?v=62"></script>
-  <script src="app.js?v=62" type="module"></script>
+  <script src="config.js?v=63"></script>
+  <script src="app.js?v=63" type="module"></script>
   <script>
     if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
   </script>

@@ -1,5 +1,5 @@
 // ===================== Shared Calendar / 共享日历 =====================
-import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=62";
+import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=63";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -1206,10 +1206,16 @@ async function loadPickEvents() {
   sel.innerHTML = waPickEvents.length
     ? waPickEvents.map((e) => `<option value="${e.id}">${esc((e.all_day ? t("all_day") : dayKey(new Date(e.start)) === v ? fmtTime(e.start) : fmtDateTime(e.start) + " →") + " · " + e.title)}</option>`).join("")
     : `<option value="">${esc(t("wp_none"))}</option>`;
+  fillPickCustomer();
   updateWaPreview();
 }
 $("#wpDate").addEventListener("change", loadPickEvents);
-$("#wpEvent").addEventListener("change", () => updateWaPreview());
+function fillPickCustomer() { // 选了行程：带入它已有的客户名字、电话
+  const ev = waPickEvents.find((x) => String(x.id) === $("#wpEvent").value);
+  $("#wpName").value = ev?.customer_name || "";
+  $("#wpPhone").value = ev?.customer_phone || "";
+}
+$("#wpEvent").addEventListener("change", () => { fillPickCustomer(); updateWaPreview(); });
 let waPrevTimer = null;
 function updateWaPreview() {
   // 给客户：就是这段文字（WhatsApp 会把换行变成「 | 」）
@@ -1218,7 +1224,7 @@ function updateWaPreview() {
   // 选了日期 + 行程 → 用那个行程的标题（和它自己的客户讯息，没有就用上面写的）
   const ev = (waPickEvents || []).find((x) => String(x.id) === $("#wpEvent").value);
   const title = ev ? ev.title : t("wt_sample_title");
-  const msg = (ev?.customer_note || $("#wtText").value).replace(/\r/g, "").trim();
+  const msg = $("#wtText").value.replace(/\r/g, "").trim();
   $("#wtPreview").innerHTML = `<b>${esc(title)}</b>` + (msg ? `\n\n${esc(msg)}` : ""); // 标题粗体（和 WhatsApp 一样）
   $("#wtPreview2").textContent = waFlatten(title + "\n" + msg) || "—";
   // 给自己 / 员工的行程摘要：用目前选的「每天 / 每星期一」从伺服器算出来（还没保存）
@@ -1233,11 +1239,25 @@ function updateWaPreview() {
 ["#wtText", "#dgDate", "#dgHour", "#dgPhones"].forEach((sel) => $(sel).addEventListener("input", updateWaPreview));
 $("#dgDate").addEventListener("change", updateWaPreview);
 $("#waAutoSave").onclick = async () => {
+  const evId = $("#wpEvent").value, phone = $("#wpPhone").value.trim();
+  if (evId && !phone) { toast(t("wp_need_phone")); $("#wpPhone").focus(); return; }
   try {
     await api("/api/admin/wa-text", { method: "PUT", body: { text: $("#wtText").value } });
     if (state.config) state.config.waDefault = $("#wtText").value;
+    if (evId) {
+      // 把讯息排进这个行程：前一天下午 4 点自动发给客户
+      const saved = await api(`/api/events/${evId}`, { method: "PATCH", body: {
+        customer_phone: phone, customer_name: $("#wpName").value.trim() || null,
+        customer_note: $("#wtText").value.trim(), customer_auto: true } });
+      // 跳到那个行程所在的星期，马上在 WhatsApp Schedule 看到
+      const target = new Date(saved.start || `${$("#wpDate").value}T12:00`);
+      state.weekOffset = Math.round((startOfWeek(target) - weekStart(0)) / (7 * 86400000));
+      await renderWeek();
+      $("#weekWa").scrollIntoView({ behavior: "smooth", block: "start" });
+    }
   } catch (e) { toast(t("save_failed", { error: e.message })); }
 };
+function startOfWeek(d) { const x = new Date(d); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; }
 
 // 「我的日历」清单：勾选要同步哪些日历（主日历一定同步）
 async function loadCalList() {
