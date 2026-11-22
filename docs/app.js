@@ -1,5 +1,5 @@
 // ===================== Shared Calendar / 共享日历 =====================
-import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=73";
+import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=74";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -1875,9 +1875,6 @@ async function renderCalCard() {
   $("#calInviteBtns").hidden = c.role === "viewer";
   $("#calLinkBox").hidden = true;
   $("#calLeaveBtn").hidden = owner;
-  $("#calGoogleSel").innerHTML = (state.calendars || []).map((x) => `<option value="${x.id}">${esc(x.name)}</option>`).join("");
-  $("#calGoogleBox").hidden = !state.me?.google;
-  if (state.me?.google) $("#calGoogleSel").value = String(state.me.google.appCalendarId || "");
   try {
     const people = await api(`/api/calendars/${c.id}/people`);
     $("#calPeople").innerHTML = people.map((p) => `<li data-uid="${p.id}"><span class="who"><b>${esc(p.name)}</b> ${p.id === state.me?.id ? `<span class="muted">${esc(t("cl_you"))}</span>` : ""}<br><span class="muted">${esc(p.email)}</span></span>
@@ -1922,9 +1919,6 @@ $("#calLeaveBtn").onclick = async () => {
     store.set("cal", ""); location.reload();
   } catch (e) { toast(e.message); }
 };
-$("#calGoogleSel").addEventListener("change", async (ev) => {
-  try { await api("/api/google/app-calendar", { method: "PUT", body: { calendarId: Number(ev.target.value) } }); } catch (e) { toast(e.message); }
-});
 
 let started = false;
 async function startApp() {

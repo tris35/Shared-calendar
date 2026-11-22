@@ -17,7 +17,7 @@ import { sendDueCustomerMessages, sendDigestIfDue } from "./lib/whatsapp.mts";
 const CORS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*", // 登录用 Authorization 标头（不用 cookie），所以可以开放
   "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "authorization, content-type, x-lang, apikey, x-client-info",
+  "Access-Control-Allow-Headers": "authorization, content-type, x-lang, x-cal, apikey, x-client-info",
   "Access-Control-Max-Age": "86400",
 };
 
