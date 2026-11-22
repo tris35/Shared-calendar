@@ -707,3 +707,5 @@ button:active:not(:disabled), .item:active, .wk-item:active { transform: scale(.
 @media (max-width: 420px) { .wa-pick { grid-template-columns: 1fr; } }
 .wa-pick label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 700; color: #5b4a99; }
 .wa-pick input, .wa-pick select { min-width: 0; border: 1.5px solid #cdbff5; border-radius: 10px; padding: 8px 10px; background: #fff; font-size: 14.5px; color: var(--text); }
+
+#wtPreview2[hidden] { display: none; }
