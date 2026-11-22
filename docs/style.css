@@ -548,3 +548,12 @@ body.locked > .topbar, body.locked > main, body.locked > .tabbar { display: none
 .dd-block { position: absolute; z-index: 1; }
 .dd-now { position: absolute; left: -6px; right: 0; border-top: 2px solid #d93025; z-index: 2; pointer-events: none; }
 .dd-now::before { content: ""; position: absolute; left: -1px; top: -6px; width: 10px; height: 10px; border-radius: 50%; background: #d93025; }
+
+/* 按钮反应快一点：去掉手机 0.3 秒点击延迟，按下立刻有回馈 */
+button, a, label, input, select, textarea, summary, .day, .item, .dd-hour, .dd-grid, .wk-item, [role="button"], [role="radio"] {
+  touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+}
+button, .item, .wk-item, .day { transition: transform .06s ease-out, background-color .12s, opacity .12s; }
+button:active:not(:disabled), .item:active, .wk-item:active { transform: scale(.97); }
+.day:active { background-color: var(--today); }
+.dd-ev:active { transform: scale(.98); filter: brightness(.96); }

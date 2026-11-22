@@ -1,5 +1,5 @@
 // ===================== Shared Calendar / 共享日历 =====================
-import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=18";
+import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=19";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -311,7 +311,18 @@ $("#addEventBtn").onclick = () => openEditor(null, state.selected);
 // ---------- 行程详情 + 时间线 ----------
 let current = null; // 正在看的行程（含 feed）
 async function openDetail(id) {
+  // 先用已经载入的资料马上打开（不用等网络），再在背景补上留言、照片等完整资料
+  const cached = (state.events || []).find((x) => x.id === id) || (state.weekEvents || []).find((x) => x.id === id);
+  if (cached) {
+    current = { ...cached, feed: [], google: null };
+    showDetailNow(id);
+    api(`/api/events/${id}`).then((full) => { if (current?.id === id) { current = full; renderDetail(); } }).catch(() => {});
+    return;
+  }
   try { current = await api(`/api/events/${id}`); } catch (e) { toast(e.message); return; }
+  showDetailNow(id);
+}
+function showDetailNow(id) {
   renderDetail();
   $("#detailMenu").hidden = true;
   $("#postAs").textContent = t("posting_as", { name: myName() });
@@ -970,13 +981,13 @@ $("#weekDays").addEventListener("click", async (ev) => {
   const box = ev.target.closest("[data-done]");
   if (box) {
     ev.stopPropagation();
-    box.disabled = true;
+    const li = box.closest(".wk-item"), done = box.checked;
+    li.classList.toggle("done", done); // 马上显示，背景再存
     try {
-      await api(`/api/events/${box.dataset.done}/done`, { method: "POST", body: { done: box.checked } });
-      toast(t(box.checked ? "wk_done_toast" : "wk_undone_toast"));
-      await renderWeek();
-    } catch (e) { box.checked = !box.checked; toast(e.message); }
-    box.disabled = false;
+      await api(`/api/events/${box.dataset.done}/done`, { method: "POST", body: { done } });
+      toast(t(done ? "wk_done_toast" : "wk_undone_toast"));
+      renderWeek();
+    } catch (e) { box.checked = !done; li.classList.toggle("done", !done); toast(e.message); }
     return;
   }
   if (ev.target.closest(".wk-check")) return;
