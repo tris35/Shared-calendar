@@ -609,3 +609,5 @@ button:active:not(:disabled), .item:active, .wk-item:active { transform: scale(.
 
 /* 标签页：有名字的标签 → 框框填上标签颜色、字变粗 */
 .label-list input.named { background: var(--c); border-color: color-mix(in srgb, var(--c) 70%, #1b2a44 30%); font-weight: 700; color: #1b2a44; }
+
+.card[hidden] { display: none; }
