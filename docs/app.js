@@ -1,5 +1,5 @@
 // ===================== Shared Calendar / 共享日历 =====================
-import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=21";
+import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=22";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -689,6 +689,10 @@ function openEditor(e, day, hour) {
   $("#formChatInput").value = "";
   renderFormFeed();
   $("#eventDialog").showModal();
+  // 每次打开都从最上面（标题）开始，不停在上次卷到的位置
+  const top = () => { $("#eventDialog").scrollTop = 0; eventForm.scrollTop = 0; };
+  top(); requestAnimationFrame(top);
+  eventForm.title.focus({ preventScroll: true });
 }
 eventForm.member_id.addEventListener("change", () => {
   const isNew = eventForm.member_id.value === NEW_MEMBER;
