@@ -606,3 +606,6 @@ button:active:not(:disabled), .item:active, .wk-item:active { transform: scale(.
 .title-emojis[hidden] { display: none; }
 .title-emojis button { height: 38px; border: 0; border-radius: 8px; background: var(--surface); font-size: 20px; cursor: pointer; }
 .title-emojis button:hover { background: var(--today); }
+
+/* 标签页：有名字的标签 → 框框填上标签颜色、字变粗 */
+.label-list input.named { background: var(--c); border-color: color-mix(in srgb, var(--c) 70%, #1b2a44 30%); font-weight: 700; color: #1b2a44; }

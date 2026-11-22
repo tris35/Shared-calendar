@@ -1,5 +1,5 @@
 // ===================== Shared Calendar / 共享日历 =====================
-import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=30";
+import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=31";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -862,8 +862,13 @@ function renderLabels() {
   $("#labelList").innerHTML = orderedLabels().map(([id, l]) => `
     <li><span class="label-swatch" style="background:${esc(l.hex)}"></span>
       <span class="label-base">${esc(t(`label_${id}`))}</span>
-      <input data-label-id="${id}" value="${esc(state.labelNames[id] || "")}" placeholder="${esc(t(`label_ex_${id}`))}" maxlength="30" /></li>`).join("");
+      <input data-label-id="${id}" class="${state.labelNames[id] ? "named" : ""}" style="--c:${esc(l.hex)}" value="${esc(state.labelNames[id] || "")}" placeholder="${esc(t(`label_ex_${id}`))}" maxlength="30" /></li>`).join("");
 }
+// 打字时马上变色：有名字 → 填上标签颜色、粗体
+$("#labelList").addEventListener("input", (ev) => {
+  const inp = ev.target.closest("[data-label-id]");
+  if (inp) inp.classList.toggle("named", !!inp.value.trim());
+});
 $("#labelList").addEventListener("change", async (ev) => {
   const inp = ev.target.closest("[data-label-id]");
   if (!inp) return;
