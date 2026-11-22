@@ -863,4 +863,4 @@ body.viewer #detailMenuBtn, body.viewer #deleteEventBtn, body.viewer #editEventB
 .fp-code { font-size: 22px; letter-spacing: 6px; text-align: center; }
 #forgotForm[hidden], #fpStep2[hidden], .auth-tabs[hidden], .auth-foot[hidden], .forgot-link[hidden] { display: none !important; }
 #pwChangeBox[hidden] { display: none !important; }
-.fp-send { margin: 2px 0 4px; }
+.fp-send { margin: 10px 0 6px; }

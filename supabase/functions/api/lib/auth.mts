@@ -78,7 +78,7 @@ async function sendResetMail(to: string, code: string, lang: string) {
     body: JSON.stringify({ sender: { email: from, name: "Shared Calendar" }, to: [{ email: to }], subject: tx.subject, textContent: text,
       htmlContent: `<div style="font-family:sans-serif;font-size:16px">${text.replace(code, `<b style="font-size:28px;letter-spacing:4px">${code}</b>`).replace(/\n/g, "<br>")}</div>` }),
   });
-  if (!res.ok) { console.error("brevo", res.status, await res.text().catch(() => "")); throw new AuthError("寄信失败，请稍后再试", 502); }
+  if (!res.ok) { console.error("brevo", res.status, await res.text().catch(() => ""), "key type:", key.split("-")[0], "length:", key.length); throw new AuthError("寄信失败，请稍后再试", 502); }
 }
 /** 忘记密码第 1 步：寄验证码（不透露这个 Gmail 有没有注册） */
 export async function forgotPassword(body: any, lang: string) {
