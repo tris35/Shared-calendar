@@ -582,3 +582,14 @@ button:active:not(:disabled), .item:active, .wk-item:active { transform: scale(.
 .btn.busy::before { content: ""; display: inline-block; width: 12px; height: 12px; margin-right: 6px; vertical-align: -1px;
   border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .7s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* 进度视窗（中间） */
+.progress-pop { position: fixed; inset: auto; margin: 0; border: 0; left: 50%; top: 42%; z-index: 9999; transform: translate(-50%, -50%) scale(.92); opacity: 0; pointer-events: none;
+  display: flex; flex-direction: column; align-items: center; gap: 10px; min-width: 150px; padding: 18px 22px; border-radius: 18px;
+  background: rgba(22, 34, 64, .92); color: #fff; font-weight: 700; font-size: 15px; text-align: center; box-shadow: 0 16px 40px rgba(0,0,0,.3);
+  transition: opacity .12s, transform .12s; }
+.progress-pop.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+.pg-icon { width: 30px; height: 30px; border-radius: 50%; border: 3px solid rgba(255,255,255,.35); border-top-color: #fff; animation: spin .7s linear infinite; }
+.progress-pop.done .pg-icon { animation: none; border: 0; background: #2e9e63; position: relative; }
+.progress-pop.done .pg-icon::after { content: "✓"; position: absolute; inset: 0; display: grid; place-items: center; font-size: 18px; font-weight: 900; }
+@keyframes spin { to { transform: rotate(360deg); } }

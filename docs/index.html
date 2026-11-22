@@ -16,7 +16,7 @@
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
   <meta name="mobile-web-app-capable" content="yes" />
   <title>Shared Calendar</title>
-  <link rel="stylesheet" href="style.css?v=27" />
+  <link rel="stylesheet" href="style.css?v=28" />
 </head>
 <body class="locked">
   <!-- 登录 / 注册（打开 App 前） -->
@@ -252,6 +252,8 @@
 
   <!-- 行程详情：资料 + 时间线（留言、照片、修改纪录） -->
   <!-- 点日期：那天的行程 + 「新增」按钮 -->
+  <div id="progressPop" class="progress-pop" popover="manual" role="status" aria-live="polite"><span class="pg-icon"></span><span id="progressText"></span></div>
+
   <dialog id="dayDialog" class="day-dialog">
     <div class="dd-head">
       <div class="dd-date"><span id="ddDow"></span><b id="ddNum"></b></div>
@@ -429,8 +431,8 @@
   </dialog>
 
   <div id="toast" class="toast" role="status"></div>
-  <script src="config.js?v=27"></script>
-  <script src="app.js?v=27" type="module"></script>
+  <script src="config.js?v=28"></script>
+  <script src="app.js?v=28" type="module"></script>
   <script>
     if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
   </script>

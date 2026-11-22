@@ -1,5 +1,5 @@
 // ===================== Shared Calendar / 共享日历 =====================
-import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=27";
+import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=28";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -25,7 +25,57 @@ const passwordOk = (pw) => pw.length >= 6 && /[^\p{L}\p{N}\s]/u.test(pw);
 const API_BASE = String(window.APP_CONFIG?.apiBase || "").replace(/\/$/, "");
 const token = () => store.get("token") || "";
 const myName = () => state.me?.name || "";
+// 进度视窗：送资料到服务器时（登录、保存、删除、上传…）中间跳出「处理中…」，完成后显示「✓ 已保存」
+const SILENT = [/^\/api\/google\/pull/, /\/done$/, /^\/api\/google\/sync-all/, /^\/api\/chat/];
+function progressText(path, method, body) {
+  if (path.startsWith("/api/auth/login")) return ["pg_login", "pg_login_ok"];
+  if (path.startsWith("/api/auth/signup")) return ["pg_signup", "pg_signup_ok"];
+  if (path.startsWith("/api/auth/logout")) return null;
+  if (method === "DELETE") return ["pg_delete", "pg_delete_ok"];
+  if (body instanceof FormData) return ["pg_upload", "pg_upload_ok"];
+  if (path === "/api/events" && method === "POST") return ["pg_save", "pg_event_ok"];
+  return ["pg_save", "pg_save_ok"];
+}
+let pgCount = 0, pgTimer = null, pgDoneTimer = null;
+function progressStart(key) {
+  pgCount++;
+  clearTimeout(pgDoneTimer);
+  clearTimeout(pgTimer);
+  pgTimer = setTimeout(() => { // 很快完成的就不闪一下
+    $("#progressText").textContent = t(key);
+    popTop();
+    $("#progressPop").className = "progress-pop show";
+  }, 150);
+}
+function progressEnd(okKey) {
+  pgCount = Math.max(0, pgCount - 1);
+  if (pgCount) return;
+  clearTimeout(pgTimer);
+  if (okKey) {
+    $("#progressText").textContent = t(okKey);
+    popTop();
+    $("#progressPop").className = "progress-pop show done";
+    pgDoneTimer = setTimeout(popHide, 900);
+  } else popHide();
+}
+// 放到最上层（盖过正在打开的视窗，例如编辑行程）
+function popTop() { const el = $("#progressPop"); try { if (el.matches(":popover-open")) el.hidePopover(); el.showPopover(); } catch {} }
+function popHide() {
+  const el = $("#progressPop"); el.className = "progress-pop";
+  setTimeout(() => { if (!el.classList.contains("show")) try { el.hidePopover(); } catch {} }, 150);
+}
+
 async function api(path, opts = {}) {
+  const method = (opts.method || "GET").toUpperCase();
+  const pg = method !== "GET" && !opts.silent && !SILENT.some((r) => r.test(path)) ? progressText(path, method, opts.body) : null;
+  if (pg) progressStart(pg[0]);
+  try {
+    const data = await apiRaw(path, opts);
+    if (pg) progressEnd(pg[1]);
+    return data;
+  } catch (e) { if (pg) progressEnd(null); throw e; }
+}
+async function apiRaw(path, opts = {}) {
   const headers = { "x-lang": getLang(), ...(token() ? { Authorization: `Bearer ${token()}` } : {}), ...(opts.headers || {}) };
   let body = opts.body;
   if (body && !(body instanceof FormData)) { headers["Content-Type"] = "application/json"; body = JSON.stringify(body); }
