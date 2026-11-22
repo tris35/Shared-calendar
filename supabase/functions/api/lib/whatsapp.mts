@@ -46,7 +46,7 @@ export async function customerText(e: any, settings?: any) {
     .replaceAll("{title}", e.title || "")
     .replaceAll("{date}", d.toLocaleDateString("en-GB", { timeZone: tz, weekday: "short", day: "numeric", month: "short" }))
     .replaceAll("{time}", e.all_day ? "" : d.toLocaleTimeString("en-US", { timeZone: tz, hour: "numeric", minute: "2-digit", hour12: true }));
-  return flattenNote(fill(e.customer_note || "")); // 发出去的 = 行程里写的讯息（不另外加开头结尾）
+  return flattenNote([e.title || "", fill(e.customer_note || "")].filter((x) => x.trim()).join("\n")); // 发出去的 = 行程标题 + 行程里写的讯息
 }
 export function flattenNote(note: string) {
   return String(note || "").replace(/\r/g, "").split("\n").map((l) => l.trim()).filter(Boolean).join(" | ")
