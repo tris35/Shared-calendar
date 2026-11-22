@@ -711,3 +711,10 @@ button:active:not(:disabled), .item:active, .wk-item:active { transform: scale(.
 #wtPreview2[hidden] { display: none; }
 
 .wa-pick { grid-template-columns: 1fr 1fr; }
+
+/* 必填 */
+.req { color: #d64545; font-weight: 800; margin-left: 2px; }
+.wa-err { margin: 0; font-size: 13px; font-weight: 700; color: #d64545; }
+.wa-err[hidden] { display: none; }
+#wtText.invalid, #wpPhone.invalid { border-color: #d64545 !important; box-shadow: 0 0 0 3px rgba(214, 69, 69, .15); }
+#waAutoSave:disabled { background: #b9c0cc; border-color: #b9c0cc; color: #fff; opacity: 1; cursor: not-allowed; }

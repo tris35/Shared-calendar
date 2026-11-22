@@ -1,5 +1,5 @@
 // ===================== Shared Calendar / 共享日历 =====================
-import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=63";
+import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=64";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -1208,6 +1208,7 @@ async function loadPickEvents() {
     : `<option value="">${esc(t("wp_none"))}</option>`;
   fillPickCustomer();
   updateWaPreview();
+  checkWaRequired(false);
 }
 $("#wpDate").addEventListener("change", loadPickEvents);
 function fillPickCustomer() { // 选了行程：带入它已有的客户名字、电话
@@ -1238,9 +1239,22 @@ function updateWaPreview() {
 }
 ["#wtText", "#dgDate", "#dgHour", "#dgPhones"].forEach((sel) => $(sel).addEventListener("input", updateWaPreview));
 $("#dgDate").addEventListener("change", updateWaPreview);
+// 必填：讯息、行程、电话都有了才可以按「保存」
+const validPhone = (p) => p.replace(/\D/g, "").length >= 8;
+function checkWaRequired(show) {
+  const okMsg = !!$("#wtText").value.trim(), okEv = !!$("#wpEvent").value, okPh = validPhone($("#wpPhone").value);
+  $("#waAutoSave").disabled = !(okMsg && okEv && okPh);
+  if (show) { $("#errMsg").hidden = okMsg; $("#errEvent").hidden = okEv; $("#errPhone").hidden = okPh; }
+  $("#wtText").classList.toggle("invalid", show && !okMsg);
+  $("#wpPhone").classList.toggle("invalid", show && !okPh);
+  return okMsg && okEv && okPh;
+}
+["#wtText", "#wpPhone", "#wpName"].forEach((sel) => $(sel).addEventListener("input", () => checkWaRequired(false)));
+["#wtText", "#wpPhone"].forEach((sel) => $(sel).addEventListener("blur", () => checkWaRequired(true)));
+$("#wpEvent").addEventListener("change", () => checkWaRequired(false));
 $("#waAutoSave").onclick = async () => {
+  if (!checkWaRequired(true)) return; // 没填完不能保存
   const evId = $("#wpEvent").value, phone = $("#wpPhone").value.trim();
-  if (evId && !phone) { toast(t("wp_need_phone")); $("#wpPhone").focus(); return; }
   try {
     await api("/api/admin/wa-text", { method: "PUT", body: { text: $("#wtText").value } });
     if (state.config) state.config.waDefault = $("#wtText").value;
