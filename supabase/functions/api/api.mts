@@ -7,7 +7,7 @@ import { putPhoto, getPhotoData, deletePhotoData } from "./lib/photos.mts";
 import * as db from "./lib/db.mts";
 import { getSettings, saveSettings, sign } from "./lib/settings.mts";
 import { chat, claudeEnabled } from "./lib/claude.mts";
-import { syncEvent, deleteGoogleEvents, authUrl, handleCallback, disconnect, clientCredentials, redirectUri, mainUrl, listGoogleCalendars, listSyncCalendars, setCalendarEnabled, switchSyncCalendar, pullFromGoogle, ensureWatch, pushTarget } from "./lib/gcal.mts";
+import { syncEvent, deleteGoogleEvents, authUrl, handleCallback, disconnect, clientCredentials, redirectUri, mainUrl, listGoogleCalendars, listSyncCalendars, setCalendarEnabled, switchSyncCalendar, retryFailedSyncs, pullFromGoogle, ensureWatch, pushTarget } from "./lib/gcal.mts";
 import { AuthError, signup, login, currentUser, changePassword, publicUser, isAdmin, canWhatsApp } from "./lib/auth.mts";
 import { waConfig, sendCustomerMessage, customerSendAt, waUsage, buildDigest } from "./lib/whatsapp.mts";
 import { tr, langFrom, normLang, LANG_CODES, desc } from "./lib/i18n.mts";
@@ -264,6 +264,7 @@ export async function handleApi(req: Request): Promise<Response> {
         if (!(await db.getGoogleLink(me.id))) return Response.json({ skipped: true });
         const force = !!(await body()).force; // 切换日历后的第一次完整读取：网页会连续呼叫直到 done
         later(ensureWatch(me.id, siteUrl)); // 确保 Google 有变更会马上通知（已开通就不做事）
+        later(retryFailedSyncs(siteUrl, me.id)); // 之前同步失败的行程自动再试
         return Response.json(await pullFromGoogle(me.id, siteUrl, { minSeconds: force ? 0 : 60 }));
       }
       if (seg[1] === "sync-all" && method === "POST") {

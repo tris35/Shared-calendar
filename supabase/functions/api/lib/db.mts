@@ -239,6 +239,12 @@ export async function setEventGoogle(eventId: number, userId: number, f: { googl
       synced_at = COALESCE(EXCLUDED.synced_at, event_google.synced_at), error = EXCLUDED.error,
       etag = COALESCE(EXCLUDED.etag, event_google.etag)`;
 }
+/** 同步到 Google 失败的行程（自动重试用） */
+export async function listFailedSyncs(userId: number | null, limit = 10) {
+  return userId == null
+    ? sql`SELECT event_id, user_id FROM event_google WHERE error IS NOT NULL ORDER BY event_id LIMIT ${limit}`
+    : sql`SELECT event_id, user_id FROM event_google WHERE error IS NOT NULL AND user_id = ${userId} ORDER BY event_id LIMIT ${limit}`;
+}
 export async function findEventGoogle(userId: number, googleEventId: string, calendarId: string) {
   return (await sql`SELECT * FROM event_google WHERE user_id = ${userId} AND google_event_id = ${googleEventId}
     AND COALESCE(calendar_id, (SELECT calendar_id FROM google_links WHERE user_id = ${userId})) = ${calendarId}`)[0] ?? null;

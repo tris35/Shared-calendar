@@ -505,7 +505,18 @@ async function pullCalendar(ctx: any, cal: any) {
   }
 }
 
-/** 排程用：读取所有人的 Google 变更 */
+/** 自动重试：之前同步到 Google 失败的行程再试一次 */
+export async function retryFailedSyncs(siteUrl: string, userId: number | null = null, deadline = Date.now() + 10_000) {
+  let fixed = 0;
+  for (const m of await db.listFailedSyncs(userId)) {
+    if (Date.now() > deadline) break;
+    const r: any = await syncEvent(m.event_id, siteUrl, m.user_id).catch(() => null);
+    if (r?.ok) fixed++;
+  }
+  return fixed;
+}
+
+/** 排程用：读取所有人的 Google 变更，并重试失败的同步 */
 export async function pullAll(siteUrl: string) {
   const deadline = Date.now() + 22_000;
   for (const l of await db.listGoogleLinks()) {
@@ -513,6 +524,7 @@ export async function pullAll(siteUrl: string) {
     await ensureWatch(l.user_id, siteUrl).catch((e) => console.error(e));
     await pullFromGoogle(l.user_id, siteUrl, { minSeconds: 120, deadline });
   }
+  await retryFailedSyncs(siteUrl, null, deadline + 5_000).catch((e) => console.error(e));
 }
 
 // ---------- 快速同步：Google 推送通知 ----------
