@@ -16,7 +16,7 @@
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
   <meta name="mobile-web-app-capable" content="yes" />
   <title>Shared Calendar</title>
-  <link rel="stylesheet" href="style.css?v=31" />
+  <link rel="stylesheet" href="style.css?v=32" />
 </head>
 <body class="locked">
   <!-- 登录 / 注册（打开 App 前） -->
@@ -219,7 +219,7 @@
           </div>
         </section>
 
-        <section class="card">
+        <section class="card" id="icsCard" hidden><!-- 订阅链接：已用 Google 同步，所以隐藏 -->
           <h3 data-i18n="ics_title"></h3>
           <p class="hint" style="padding:0" data-i18n="ics_hint"></p>
           <div class="composer">
@@ -434,8 +434,8 @@
   </dialog>
 
   <div id="toast" class="toast" role="status"></div>
-  <script src="config.js?v=31"></script>
-  <script src="app.js?v=31" type="module"></script>
+  <script src="config.js?v=32"></script>
+  <script src="app.js?v=32" type="module"></script>
   <script>
     if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
   </script>
