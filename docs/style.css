@@ -635,7 +635,7 @@ button:active:not(:disabled), .item:active, .wk-item:active { transform: scale(.
 /* 设置页：框线粗一点、清楚一点 */
 #view-settings .card { border: 2px solid var(--grid); }
 #view-settings .card h3 { font-weight: 800; }
-#view-settings .card h4 { font-weight: 800; padding-top: 10px; border-top: 1.5px solid var(--grid); }
+#view-settings .card h4 { font-weight: 800; padding-top: 10px; border-top: 2px solid var(--accent); }
 #view-settings input, #view-settings select, #view-settings textarea { border-width: 1.5px; border-color: var(--grid); }
 
 /* WhatsApp 自动化页签：只留 WhatsApp 部分 */
