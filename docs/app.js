@@ -1151,6 +1151,7 @@ async function startApp() {
   state.labels = state.config.labels || {};
   state.labelNames = state.config.labelNames || {};
   $("#claudeTab").hidden = !state.config.claude; // 没有 API key 就不显示 Claude 页签
+  state.view = "calendar"; // 登录后一定先看到日历
   rerenderAll();
   if (!started) {
     started = true;
