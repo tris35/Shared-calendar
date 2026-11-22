@@ -86,6 +86,9 @@ function avatar(name) {
   if (!color) { let h = 0; for (const ch of n) h = (h * 31 + ch.charCodeAt(0)) % 360; color = n === "Claude" ? "#c47a3d" : `hsl(${h} 45% 48%)`; }
   return `<span class="avatar" style="background:${esc(color)}">${esc(n.slice(0, 1))}</span>`;
 }
+// 颜色标签的显示顺序：同一色系由浅到深（桃 → 粉 → 绿 → 蓝 → 紫 → 灰）
+const LABEL_ORDER = ["6", "4", "11", "5", "2", "10", "7", "9", "1", "3", "8"];
+const orderedLabels = () => LABEL_ORDER.filter((id) => state.labels[id]).map((id) => [id, state.labels[id]]);
 const labelName = (id) => state.labelNames?.[id] || t(`label_${id}`);
 const author = (n) => n || t("anonymous");
 
@@ -181,7 +184,7 @@ function renderMonth() {
     const cls = ["day", d.getMonth() !== state.month.getMonth() && "other", k === todayK && "today",
       k === selK && "selected", d.getDay() === 0 && "sun", d.getDay() === 6 && "sat"].filter(Boolean).join(" ");
     html += `<div class="${cls}" data-day="${k}"><span class="num">${d.getDate()}</span>
-      ${evs.slice(0, 3).map((e) => `<div class="chip" style="background:${esc(eventColor(e))}">${esc(e.title)}</div>`).join("")}
+      ${evs.slice(0, 3).map((e) => `<div class="chip" style="--c:${esc(eventColor(e))}">${esc(e.title)}</div>`).join("")}
       ${evs.length > 3 ? `<div class="more">+${evs.length - 3}</div>` : ""}</div>`;
   }
   $("#monthGrid").innerHTML = html;
@@ -235,7 +238,7 @@ function renderDetail() {
   const e = current;
   const color = eventColor(e);
   $("#dTitle").textContent = e.title;
-  $("#dTitle").style.color = color;
+  $("#dTitle").style.color = `color-mix(in srgb, ${color} 45%, #1d2740)`; // 粉彩色太浅，标题用深一点
   const s = new Date(e.start), end = e.end ? new Date(e.end) : null;
   const sameDay = !end || dayKey(s) === dayKey(end);
   const setDate = (pre, d) => {
@@ -498,7 +501,7 @@ function fillMemberSelect() {
   if (keep) eventForm.member_id.value = keep;
 }
 function renderLabelPicker(selected) {
-  const opts = [["", t("label_none"), "transparent"], ...Object.entries(state.labels).map(([id, l]) => [id, labelName(id), l.hex])];
+  const opts = [["", t("label_none"), "transparent"], ...orderedLabels().map(([id, l]) => [id, labelName(id), l.hex])];
   $("#labelPicker").setAttribute("aria-label", t("f_label"));
   $("#labelPicker").innerHTML = opts.map(([id, name, hex]) => `
     <button type="button" role="radio" aria-checked="${String(id) === String(selected ?? "")}" data-label="${id}" title="${esc(name)}" aria-label="${esc(name)}"
@@ -643,7 +646,7 @@ let editingMember = null;
 const memberForm = $("#memberForm");
 // 颜色标签：每个颜色可以取名字（所有人共用）
 function renderLabels() {
-  $("#labelList").innerHTML = Object.entries(state.labels).map(([id, l]) => `
+  $("#labelList").innerHTML = orderedLabels().map(([id, l]) => `
     <li><span class="label-swatch" style="background:${esc(l.hex)}"></span>
       <span class="label-base">${esc(t(`label_${id}`))}</span>
       <input data-label-id="${id}" value="${esc(state.labelNames[id] || "")}" placeholder="${esc(t("label_name_ph"))}" maxlength="30" /></li>`).join("");
