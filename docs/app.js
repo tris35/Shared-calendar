@@ -649,7 +649,7 @@ function renderLabels() {
   $("#labelList").innerHTML = orderedLabels().map(([id, l]) => `
     <li><span class="label-swatch" style="background:${esc(l.hex)}"></span>
       <span class="label-base">${esc(t(`label_${id}`))}</span>
-      <input data-label-id="${id}" value="${esc(state.labelNames[id] || "")}" placeholder="${esc(t("label_name_ph"))}" maxlength="30" /></li>`).join("");
+      <input data-label-id="${id}" value="${esc(state.labelNames[id] || "")}" placeholder="${esc(t(`label_ex_${id}`))}" maxlength="30" /></li>`).join("");
 }
 $("#labelList").addEventListener("change", async (ev) => {
   const inp = ev.target.closest("[data-label-id]");
