@@ -392,7 +392,16 @@ async function refreshCalendars(l: any) {
   const known = new Map((await db.listGoogleCals(l.user_id)).map((c: any) => [c.calendar_id, c]));
   for (const c of cals) if (!known.has(c.id) || (known.get(c.id) as any).name !== c.name) await db.upsertGoogleCal(l.user_id, c.id, c.name);
   for (const id of known.keys()) if (!cals.some((c) => c.id === id) && id !== l.calendar_id) {
+    // 这个日历在 Google 被删掉了 → 从它来的行程也从 App 删掉（以及其他人 Google 里的副本）
     await stopCalWatch(l, known.get(id));
+    for (const { event_id } of await db.eventsFromCalendar(l.user_id, id)) {
+      const others = (await db.listEventGoogle(event_id)).filter((m: any) => m.user_id !== l.user_id);
+      const photos = await db.listPhotos(event_id);
+      if (await db.deleteEvent(event_id)) {
+        for (const p of photos) await deletePhotoData(p.blob_key);
+        await deleteGoogleEvents(others as any);
+      }
+    }
     await db.removeGoogleCal(l.user_id, id);
   }
   return db.listGoogleCals(l.user_id);
