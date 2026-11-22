@@ -593,3 +593,16 @@ button:active:not(:disabled), .item:active, .wk-item:active { transform: scale(.
 .progress-pop.done .pg-icon { animation: none; border: 0; background: #2e9e63; position: relative; }
 .progress-pop.done .pg-icon::after { content: "✓"; position: absolute; inset: 0; display: grid; place-items: center; font-size: 18px; font-weight: 900; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* 标题 + emoji */
+.title-field { display: flex; flex-direction: column; gap: 4px; }
+.title-field > label { font-size: 13px; color: var(--muted); }
+.title-row { display: flex; gap: 6px; }
+.title-row input { flex: 1; min-width: 0; }
+.emoji-toggle { flex: none; width: 44px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); font-size: 20px; cursor: pointer; }
+.emoji-toggle:hover { background: var(--surface-2); }
+.title-emojis { display: grid; grid-template-columns: repeat(auto-fill, minmax(38px, 1fr)); gap: 4px; padding: 6px; border: 1px solid var(--border);
+  border-radius: 12px; background: var(--surface-2); max-height: 160px; overflow-y: auto; }
+.title-emojis[hidden] { display: none; }
+.title-emojis button { height: 38px; border: 0; border-radius: 8px; background: var(--surface); font-size: 20px; cursor: pointer; }
+.title-emojis button:hover { background: var(--today); }

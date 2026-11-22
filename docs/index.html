@@ -16,7 +16,7 @@
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
   <meta name="mobile-web-app-capable" content="yes" />
   <title>Shared Calendar</title>
-  <link rel="stylesheet" href="style.css?v=28" />
+  <link rel="stylesheet" href="style.css?v=29" />
 </head>
 <body class="locked">
   <!-- 登录 / 注册（打开 App 前） -->
@@ -322,7 +322,10 @@
   <dialog id="eventDialog">
     <form id="eventForm" method="dialog">
       <h3 id="eventDialogTitle"></h3>
-      <label><span data-i18n="f_title"></span><input name="title" required data-i18n-placeholder="f_title_ph" /></label>
+      <div class="title-field"><label for="titleInput"><span data-i18n="f_title"></span></label>
+        <div class="title-row"><input id="titleInput" name="title" required data-i18n-placeholder="f_title_ph" />
+          <button type="button" class="emoji-toggle" id="titleEmojiBtn" data-i18n-aria="add_emoji" data-i18n-title="add_emoji">😀</button></div>
+        <div id="titleEmojis" class="title-emojis" hidden></div></div>
       <label class="check"><input type="checkbox" name="all_day" id="allDayCheck" /> <span data-i18n="f_allday"></span></label>
       <div class="row">
         <div class="dt-field"><span data-i18n="f_start"></span>
@@ -431,8 +434,8 @@
   </dialog>
 
   <div id="toast" class="toast" role="status"></div>
-  <script src="config.js?v=28"></script>
-  <script src="app.js?v=28" type="module"></script>
+  <script src="config.js?v=29"></script>
+  <script src="app.js?v=29" type="module"></script>
   <script>
     if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
   </script>
