@@ -82,6 +82,18 @@
       <ul id="memberList" class="list pad"></ul>
     </section>
 
+    <!-- 这星期：摘要 + 任务清单 -->
+    <section id="view-week" class="view">
+      <div class="week-head">
+        <button type="button" class="icon-btn" id="weekPrev" aria-label="‹">‹</button>
+        <div class="week-range" id="weekRange"></div>
+        <button type="button" class="icon-btn" id="weekNext" aria-label="›">›</button>
+      </div>
+      <div class="week-summary" id="weekSummary"></div>
+      <div class="week-filters" id="weekFilters"></div>
+      <div id="weekDays" class="week-days"></div>
+    </section>
+
     <!-- Claude 助手 -->
     <section id="view-claude" class="view">
       <div id="chatLog" class="chat-log">
@@ -192,6 +204,17 @@
             <h4 data-i18n="wa_admin_title"></h4>
             <p class="hint" style="padding:0" data-i18n="wa_admin_hint"></p>
             <ul id="waUsers" class="wa-users"></ul>
+            <h4 data-i18n="dg_title"></h4>
+            <p class="hint" style="padding:0" data-i18n="dg_hint"></p>
+            <div class="digest-form">
+              <label><span data-i18n="dg_mode"></span>
+                <select id="dgMode"><option value="off" data-i18n="dg_off"></option><option value="daily" data-i18n="dg_daily"></option><option value="weekly" data-i18n="dg_weekly"></option></select></label>
+              <label><span data-i18n="dg_hour"></span><select id="dgHour"></select></label>
+              <label><span data-i18n="dg_phones"></span><textarea id="dgPhones" rows="2" data-i18n-placeholder="dg_phones_ph"></textarea></label>
+              <button type="button" class="btn primary small" id="dgSave" data-i18n="save"></button>
+              <p class="hint" style="padding:0"><b data-i18n="dg_preview"></b></p>
+              <pre id="dgPreview" class="digest-preview"></pre>
+            </div>
           </div>
         </section>
 
@@ -221,7 +244,8 @@
   <nav class="tabbar">
     <button data-view="calendar" class="active"><span>📅</span><b data-i18n="tab_calendar"></b></button>
     <button data-view="members"><span>🎨</span><b data-i18n="tab_members"></b></button>
-    <button data-view="claude"><span>💬</span><b data-i18n="tab_claude"></b></button>
+    <button data-view="week"><span>📋</span><b data-i18n="tab_week"></b></button>
+    <button data-view="claude" id="claudeTab" hidden><span>💬</span><b data-i18n="tab_claude"></b></button>
     <button data-view="settings"><span>⚙️</span><b data-i18n="tab_settings"></b></button>
   </nav>
 

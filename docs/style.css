@@ -188,7 +188,7 @@ dialog label > * { color: var(--text); }
 .attach { cursor: pointer; }
 
 .tabbar {
-  display: grid; grid-template-columns: repeat(4, 1fr); background: var(--surface); border-top: 1px solid var(--border);
+  display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; background: var(--surface); border-top: 1px solid var(--border);
   padding-bottom: env(safe-area-inset-bottom);
 }
 .tabbar button { background: none; border: 0; padding: 6px 0 8px; font-size: 11px; color: var(--muted); display: flex; flex-direction: column; align-items: center; gap: 1px; cursor: pointer; }
@@ -432,3 +432,51 @@ body.locked > .topbar, body.locked > main, body.locked > .tabbar { display: none
 .fab { background: #e8b04a !important; color: #1b2a44 !important; }
 .tabbar button.active { color: #1f3a68; }
 .day.today .num { background: #1f3a68; }
+
+.tabbar button[hidden] { display: none; }
+
+/* 这星期：摘要 + 任务清单 */
+.week-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px 4px; }
+.week-range { display: flex; flex-direction: column; align-items: center; line-height: 1.25; }
+.week-range b { font-size: 17px; color: var(--accent); }
+.week-range span { font-size: 13px; color: var(--muted); }
+.week-summary { margin: 6px 16px 4px; padding: 12px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 2px 10px rgba(20, 35, 70, .06); }
+.wk-stats { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.wk-stats b { font-size: 16px; } .wk-stats span { color: var(--muted); font-size: 13px; }
+.wk-progress { height: 8px; border-radius: 999px; background: var(--surface-2); margin: 8px 0; overflow: hidden; }
+.wk-progress span { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #e8b04a, var(--accent)); transition: width .3s; }
+.wk-labels { display: flex; flex-wrap: wrap; gap: 6px; }
+.wk-labels .chip { font-size: 12px; padding: 1px 8px; }
+.week-filters { display: flex; gap: 6px; overflow-x: auto; padding: 8px 16px; scrollbar-width: none; }
+.wk-filter { flex: none; display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--border); background: var(--surface); border-radius: 999px; padding: 4px 12px; font-size: 13px; cursor: pointer; }
+.wk-filter .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.wk-filter[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+.week-days { padding: 0 16px 90px; display: flex; flex-direction: column; gap: 10px; }
+.wk-day { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 8px 12px; }
+.wk-day h4 { margin: 2px 0 6px; font-size: 14px; color: var(--muted); }
+.wk-day.sun h4 { color: var(--sun); } .wk-day.sat h4 { color: var(--sat); }
+.wk-day.today { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.wk-day.today h4 { color: var(--accent); }
+.wk-day ul { list-style: none; margin: 0; padding: 0; }
+.wk-item { display: flex; align-items: center; gap: 10px; padding: 7px 0; cursor: pointer; }
+.wk-item + .wk-item { border-top: 1px dashed var(--border); }
+.wk-item .bar { width: 4px; align-self: stretch; border-radius: 4px; flex: none; }
+.wk-main { min-width: 0; flex: 1; }
+.wk-main .t { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wk-main .s { font-size: 12.5px; color: var(--muted); }
+.wk-item.done .t { text-decoration: line-through; color: var(--muted); }
+.wk-item.done .bar { opacity: .4; }
+.wk-check { position: relative; width: 26px; height: 26px; flex: none; cursor: pointer; }
+.wk-check input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+.wk-check span { position: absolute; inset: 0; border: 2px solid var(--border); border-radius: 8px; background: var(--surface); transition: background .15s, border-color .15s; }
+.wk-check input:checked + span { background: #2e9e63; border-color: #2e9e63; }
+.wk-check input:checked + span::after { content: "✓"; color: #fff; font-weight: 800; position: absolute; inset: 0; display: grid; place-items: center; font-size: 15px; }
+.wk-check input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+.wk-empty { margin: 0; color: var(--muted); font-size: 13px; }
+
+/* WhatsApp 摘要设定 */
+.digest-form { display: flex; flex-direction: column; gap: 8px; }
+.digest-form label { display: flex; flex-direction: column; gap: 4px; }
+.digest-form select, .digest-form textarea { border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; background: var(--surface-2); }
+.digest-form .btn { align-self: flex-start; }
+.digest-preview { white-space: pre-wrap; margin: 0; padding: 10px 12px; background: #e7f6df; color: #1d2a16; border-radius: 12px; font: 13px/1.45 inherit; font-family: inherit; }

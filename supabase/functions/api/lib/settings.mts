@@ -12,6 +12,14 @@ export type Settings = {
   cronKey: string;             // 资料库排程（pg_cron）呼叫 /api/cron/* 时用的密钥
   cronUrl?: string;            // 排程要呼叫的网址（这个函数自己的网址，自动记下）
   labelNames?: Record<string, string>; // 颜色标签的自订名称（例如 番茄红 = 拍摄），所有人共用
+  digest?: Digest;             // WhatsApp 行程摘要（每天 / 每周）
+};
+
+export type Digest = {
+  mode: "off" | "daily" | "weekly"; // 每天早上：今天的行程；每周一早上：这个星期的行程
+  hour: number;                     // 几点发（App 时区）
+  phones: string[];                 // 收件人电话
+  lastSent?: string;                // 最后一次发送的日期（YYYY-MM-DD），避免重复
 };
 
 let cache: { at: number; value: Settings } | null = null;

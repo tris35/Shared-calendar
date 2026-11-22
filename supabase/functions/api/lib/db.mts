@@ -45,7 +45,7 @@ function outEvent(e: any) {
   return {
     ...e, start: iso(e.start), end: iso(e.end), created_at: iso(e.created_at),
     all_day: e.all_day ? 1 : 0, remind: e.remind ? 1 : 0,
-    customer_auto: e.customer_auto === false ? 0 : 1, customer_sent_at: iso(e.customer_sent_at),
+    customer_auto: e.customer_auto === false ? 0 : 1, customer_sent_at: iso(e.customer_sent_at), done_at: iso(e.done_at),
     color: e.label && LABELS[e.label] ? LABELS[e.label].hex : null,
     photo_count: Number(e.photo_count ?? 0), memo_count: Number(e.memo_count ?? 0),
   };
@@ -98,6 +98,16 @@ export async function createEvent(e: any, author?: string | null) {
 const FIELD_CODES: Record<string, string> = { title: "title", start: "time", end: "time", all_day: "time", notes: "notes", label: "label", member_id: "member", remind: "remind",
   customer_phone: "customer", customer_note: "customer", customer_auto: "customer_auto" };
 
+/** 任务清单：打勾 / 取消打勾（只在 App 里） */
+export async function setEventDone(id: number, done: boolean, who: string | null) {
+  const r = await sql`UPDATE events SET done_at = ${done ? new Date().toISOString() : null}, done_by = ${done ? who : null} WHERE id = ${id} RETURNING id`;
+  if (r.length) await logEvent(id, who, done ? "done" : "undone");
+  return r.length > 0;
+}
+/** WhatsApp 摘要也算进每个月的用量（event_id 为空） */
+export async function logWaDigest() {
+  await sql`INSERT INTO wa_sent (event_id) VALUES (NULL)`;
+}
 export async function updateEvent(id: number, e: any, author?: string | null) {
   const old = await getEvent(id);
   if (!old) return null;

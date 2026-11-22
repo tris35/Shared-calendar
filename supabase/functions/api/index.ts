@@ -12,7 +12,7 @@ import { handleFeed } from "./calendar-feed.mts";
 import { handlePhotoLink } from "./photo-link.mts";
 import { getSettings } from "./lib/settings.mts";
 import { pullAll, mainUrl } from "./lib/gcal.mts";
-import { sendDueCustomerMessages } from "./lib/whatsapp.mts";
+import { sendDueCustomerMessages, sendDigestIfDue } from "./lib/whatsapp.mts";
 
 const CORS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*", // 登录用 Authorization 标头（不用 cookie），所以可以开放
@@ -43,7 +43,11 @@ export async function handle(req: Request): Promise<Response> {
     else if (seg[1] === "cron" && req.method === "POST") {
       if (!(await cronAllowed(req))) res = new Response("forbidden", { status: 403 });
       else if (seg[2] === "google-pull") { await pullAll(mainUrl("")); res = Response.json({ ok: true }); }
-      else if (seg[2] === "customer-messages") res = Response.json(await sendDueCustomerMessages());
+      else if (seg[2] === "customer-messages") { // 每 15 分钟：给客户的讯息 + 行程摘要
+        const customers = await sendDueCustomerMessages();
+        const digest = await sendDigestIfDue().catch((e) => ({ error: String(e?.message || e) }));
+        res = Response.json({ customers, digest });
+      }
       else res = new Response("not found", { status: 404 });
     } else if (seg[0] === "api") res = await handleApi(req);
     else res = Response.json({ ok: true, app: "shared-calendar" }); // 健康检查

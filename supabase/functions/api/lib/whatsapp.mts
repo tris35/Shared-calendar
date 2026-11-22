@@ -119,3 +119,66 @@ export async function sendDueCustomerMessages() {
   }
   return { sent, failed };
 }
+
+// ---------- WhatsApp 行程摘要（每天早上 / 每周一早上） ----------
+const ymdIn = (d: Date, tz: string) => d.toLocaleDateString("en-CA", { timeZone: tz });
+const plusDays = (ymd: string, n: number) => {
+  const d = new Date(`${ymd}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10);
+};
+
+/** 摘要文字：日期、时间、谁、标签名称，已完成的打 ✓。WhatsApp 模板参数不能换行，所以用 | 分隔 */
+export async function buildDigest(mode: "daily" | "weekly", now = new Date()) {
+  const { timezone, labelNames = {} } = await getSettings();
+  const today = ymdIn(now, timezone);
+  let from = today, days = 1;
+  if (mode === "weekly") { // 从这个星期一开始的 7 天
+    const dow = new Date(`${today}T12:00:00Z`).getUTCDay(); // 0 = 星期日
+    from = plusDays(today, -((dow + 6) % 7)); days = 7;
+  }
+  const to = plusDays(from, days);
+  const events = await db.listEvents({ from: wallToUtc(from, 0, 0, timezone).toISOString(), to: wallToUtc(to, 0, 0, timezone).toISOString() });
+  const label = (id: string | null) => (id ? labelNames[id] || db.LABELS[id]?.name : null);
+  const fmtT = (iso: string) => new Date(iso).toLocaleTimeString("en-GB", { timeZone: timezone, hour: "2-digit", minute: "2-digit" });
+  const fmtD = (ymd: string) => new Date(`${ymd}T12:00:00Z`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
+  const line = (e: any) => [e.done_at ? "✓" : "•", e.all_day ? "" : fmtT(e.start), e.title,
+    e.member_name ? `(${[e.member_emoji, e.member_name].filter(Boolean).join(" ")})` : "", label(e.label) ? `[${label(e.label)}]` : ""]
+    .filter(Boolean).join(" ");
+  const parts: string[] = [];
+  if (mode === "daily") {
+    parts.push(`📅 Today ${fmtD(today)}: ${events.length} event${events.length === 1 ? "" : "s"}`);
+    parts.push(...events.map(line));
+  } else {
+    parts.push(`📋 This week ${fmtD(from)} – ${fmtD(plusDays(from, 6))}: ${events.length} event${events.length === 1 ? "" : "s"}`);
+    for (let i = 0; i < 7; i++) {
+      const d = plusDays(from, i);
+      const evs = events.filter((e: any) => ymdIn(new Date(e.start), timezone) === d);
+      if (evs.length) parts.push(`${fmtD(d)}: ${evs.map(line).join(" ; ")}`);
+    }
+  }
+  if (!events.length) parts.push("Nothing scheduled 🎉");
+  const text = parts.join(" | ");
+  return text.length > 1000 ? text.slice(0, 990) + " …" : text; // WhatsApp 模板参数上限
+}
+
+/** 排程（每 15 分钟）：到了设定的时间就发摘要给设定的电话，每天最多一次 */
+export async function sendDigestIfDue(now = new Date()) {
+  const s = await getSettings();
+  const d = s.digest;
+  if (!d || d.mode === "off" || !d.phones?.length || !waConfig()) return { skipped: true };
+  const today = ymdIn(now, s.timezone);
+  if (d.lastSent === today) return { skipped: true };
+  const hour = Number(now.toLocaleString("en-GB", { timeZone: s.timezone, hour: "2-digit", hourCycle: "h23" }));
+  if (hour < d.hour) return { skipped: true };
+  if (d.mode === "weekly" && new Date(`${today}T12:00:00Z`).getUTCDay() !== 1) return { skipped: true }; // 只在星期一
+  const { saveSettings } = await import("./settings.mts");
+  await saveSettings({ digest: { ...d, lastSent: today } }); // 先记下，避免同时发两次
+  const text = await buildDigest(d.mode);
+  const c = waConfig()!;
+  let sent = 0, failed = 0;
+  for (const raw of d.phones) {
+    if ((await waUsage()).full) break; // 本月上限到了
+    try { await sendTemplate(normPhone(raw, c.cc), text); await db.logWaDigest(); sent++; }
+    catch (err: any) { failed++; console.error("[WhatsApp 摘要] 发送失败：", err?.message || err); }
+  }
+  return { sent, failed };
+}

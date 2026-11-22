@@ -144,8 +144,9 @@ function showView(v) {
   document.querySelectorAll(".tabbar button").forEach((b) => b.classList.toggle("active", b.dataset.view === v));
   const cal = v === "calendar";
   ["#prevMonth", "#nextMonth", "#todayBtn"].forEach((s) => ($(s).style.visibility = cal ? "visible" : "hidden"));
-  $("#title").textContent = cal ? monthTitle() : { members: t("tab_members"), claude: t("tab_claude"), settings: t("tab_settings") }[v];
+  $("#title").textContent = cal ? monthTitle() : { members: t("tab_members"), week: t("tab_week"), claude: t("tab_claude"), settings: t("tab_settings") }[v];
   if (v === "members") renderMembers();
+  if (v === "week") renderWeek();
   if (v === "settings") renderSettings();
 }
 
@@ -311,6 +312,8 @@ function logText(f) {
   if (f.body === "created") return t("log_created");
   if (f.body === "customer_sent") return t("log_customer_sent");
   if (f.body === "customer_failed") return t("log_customer_failed");
+  if (f.body === "done") return t("log_done");
+  if (f.body === "undone") return t("log_undone");
   if (f.body.startsWith("updated:")) {
     const fields = f.body.slice(8).split(",").filter(Boolean).map((k) => t(`field_${k}`));
     return t("log_updated", { fields: fields.join(t("list_sep")) });
@@ -738,7 +741,7 @@ async function renderSettings() {
     $("#waStatus").textContent = state.config?.whatsapp ? t("wa_ready") : t("wa_not_ready");
     $("#waNoAccess").hidden = !!me.can_whatsapp;
     $("#waAdmin").hidden = !me.admin;
-    if (me.admin) loadWaUsers();
+    if (me.admin) { loadWaUsers(); loadDigest(); }
     loadWaUsage();
     if (document.activeElement !== $("#acctName")) $("#acctName").value = me.name;
     if (document.activeElement !== $("#tzInput")) $("#tzInput").value = set.timezone;
@@ -816,6 +819,109 @@ $("#waUsers").addEventListener("change", async (ev) => {
     else document.documentElement.setAttribute("data-theme", sel.value);
   });
 })();
+
+// ---------- 这星期：摘要 + 任务清单 ----------
+state.weekOffset = 0;      // 0 = 这星期，1 = 下星期，-1 = 上星期
+state.weekFilter = null;   // { kind: "member" | "label", id }
+function weekStart(offset) { // 星期一开始
+  const d = new Date(); d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7) + offset * 7);
+  return d;
+}
+async function renderWeek() {
+  const start = weekStart(state.weekOffset), end = new Date(start); end.setDate(end.getDate() + 7);
+  const fmt = (d) => d.toLocaleDateString(locale(), { day: "numeric", month: "short" });
+  const last = new Date(end); last.setDate(last.getDate() - 1);
+  const name = state.weekOffset === 0 ? t("wk_this") : state.weekOffset === 1 ? t("wk_next") : state.weekOffset === -1 ? t("wk_last") : "";
+  $("#weekRange").innerHTML = `${name ? `<b>${esc(name)}</b>` : ""}<span>${esc(fmt(start))} – ${esc(fmt(last))}</span>`;
+  let evs = [];
+  try { evs = await api(`/api/events?from=${encodeURIComponent(start.toISOString())}&to=${encodeURIComponent(end.toISOString())}`); }
+  catch (e) { $("#weekDays").innerHTML = `<p class="hint warn">${esc(e.message)}</p>`; return; }
+  state.weekEvents = evs;
+  // 摘要：总数、完成几个、每个标签几个
+  const done = evs.filter((e) => e.done_at).length;
+  const byLabel = {};
+  for (const e of evs) if (e.label) byLabel[e.label] = (byLabel[e.label] || 0) + 1;
+  const pct = evs.length ? Math.round((done / evs.length) * 100) : 0;
+  $("#weekSummary").innerHTML = evs.length ? `
+    <div class="wk-stats"><b>${esc(t("wk_events", { n: evs.length }))}</b><span>${esc(t("wk_done", { done, n: evs.length }))}</span></div>
+    <div class="wk-progress"><span style="width:${pct}%"></span></div>
+    <div class="wk-labels">${orderedLabels().filter(([id]) => byLabel[id]).map(([id, l]) =>
+      `<span class="chip" style="--c:${esc(l.hex)}">${esc(labelName(id))} · ${byLabel[id]}</span>`).join("")}</div>`
+    : `<p class="hint">${esc(t("wk_nothing"))}</p>`;
+  // 筛选：全部 / 某个人 / 某个标签
+  const people = [...new Map(evs.filter((e) => e.member_id).map((e) => [e.member_id, e])).values()];
+  const f = state.weekFilter;
+  const chip = (kind, id, html) => `<button type="button" class="wk-filter" data-kind="${kind}" data-id="${esc(id)}" aria-pressed="${String(kind === "all" ? !f : f?.kind === kind && String(f.id) === String(id))}">${html}</button>`;
+  $("#weekFilters").innerHTML = evs.length ? chip("all", "", esc(t("wk_all")))
+    + people.map((e) => chip("member", e.member_id, esc(`${e.member_emoji || ""} ${e.member_name}`.trim()))).join("")
+    + orderedLabels().filter(([id]) => byLabel[id]).map(([id, l]) => chip("label", id, `<span class="dot" style="background:${esc(l.hex)}"></span>${esc(labelName(id))}`)).join("") : "";
+  const shown = evs.filter((e) => !f || (f.kind === "member" ? String(e.member_id) === String(f.id) : String(e.label) === String(f.id)));
+  // 每一天
+  const todayK = dayKey(new Date());
+  let html = "";
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(start); d.setDate(d.getDate() + i);
+    const k = dayKey(d), list = shown.filter((e) => dayKey(new Date(e.start)) === k);
+    html += `<section class="wk-day${k === todayK ? " today" : ""}${d.getDay() === 0 ? " sun" : d.getDay() === 6 ? " sat" : ""}">
+      <h4>${esc(d.toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "short" }))}</h4>
+      ${list.length ? `<ul>${list.map((e) => `
+        <li class="wk-item${e.done_at ? " done" : ""}" data-id="${e.id}">
+          <label class="wk-check"><input type="checkbox" data-done="${e.id}" ${e.done_at ? "checked" : ""} /><span></span></label>
+          <span class="bar" style="background:${esc(eventColor(e))}"></span>
+          <div class="wk-main"><div class="t">${esc(e.title)}</div>
+            <div class="s">${e.all_day ? esc(t("all_day")) : fmtTime(e.start) + (e.end ? " – " + fmtTime(e.end) : "")}${e.member_name ? " · " + esc((e.member_emoji ? e.member_emoji + " " : "") + e.member_name) : ""}${e.label ? " · " + esc(labelName(e.label)) : ""}</div></div>
+        </li>`).join("")}</ul>` : `<p class="wk-empty">${esc(t("wk_empty_day"))}</p>`}
+    </section>`;
+  }
+  $("#weekDays").innerHTML = html;
+}
+$("#weekPrev").onclick = () => { state.weekOffset--; renderWeek(); };
+$("#weekNext").onclick = () => { state.weekOffset++; renderWeek(); };
+$("#weekFilters").addEventListener("click", (ev) => {
+  const b = ev.target.closest(".wk-filter");
+  if (!b) return;
+  state.weekFilter = b.dataset.kind === "all" ? null : { kind: b.dataset.kind, id: b.dataset.id };
+  renderWeek();
+});
+$("#weekDays").addEventListener("click", async (ev) => {
+  const box = ev.target.closest("[data-done]");
+  if (box) {
+    ev.stopPropagation();
+    box.disabled = true;
+    try {
+      await api(`/api/events/${box.dataset.done}/done`, { method: "POST", body: { done: box.checked } });
+      toast(t(box.checked ? "wk_done_toast" : "wk_undone_toast"));
+      await renderWeek();
+    } catch (e) { box.checked = !box.checked; toast(e.message); }
+    box.disabled = false;
+    return;
+  }
+  if (ev.target.closest(".wk-check")) return;
+  const li = ev.target.closest(".wk-item");
+  if (li) openDetail(Number(li.dataset.id));
+});
+
+// ---------- WhatsApp 行程摘要（管理员） ----------
+$("#dgHour").innerHTML = Array.from({ length: 24 }, (_, h) => `<option value="${h}">${String(h).padStart(2, "0")}:00</option>`).join("");
+async function loadDigest() {
+  try {
+    const d = await api("/api/digest");
+    $("#dgMode").value = d.mode || "off";
+    $("#dgHour").value = String(d.hour ?? 8);
+    $("#dgPhones").value = (d.phones || []).join(", ");
+    $("#dgPreview").textContent = (d.preview || "").split(" | ").join("\n");
+  } catch (e) { $("#dgPreview").textContent = e.message; }
+}
+$("#dgSave").onclick = async () => {
+  const btn = $("#dgSave"); btn.disabled = true;
+  try {
+    const d = await api("/api/digest", { method: "PUT", body: { mode: $("#dgMode").value, hour: $("#dgHour").value, phones: $("#dgPhones").value } });
+    $("#dgPreview").textContent = (d.preview || "").split(" | ").join("\n");
+    toast(t("saved"));
+  } catch (e) { toast(t("save_failed", { error: e.message })); }
+  btn.disabled = false;
+};
 
 // 「我的日历」清单：勾选要同步哪些日历（主日历一定同步）
 async function loadCalList() {
@@ -1044,6 +1150,7 @@ async function startApp() {
   [state.config, state.members] = await Promise.all([api("/api/config"), api("/api/members")]);
   state.labels = state.config.labels || {};
   state.labelNames = state.config.labelNames || {};
+  $("#claudeTab").hidden = !state.config.claude; // 没有 API key 就不显示 Claude 页签
   rerenderAll();
   if (!started) {
     started = true;

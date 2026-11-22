@@ -9,7 +9,7 @@ import { getSettings, saveSettings, sign } from "./lib/settings.mts";
 import { chat, claudeEnabled } from "./lib/claude.mts";
 import { syncEvent, deleteGoogleEvents, authUrl, handleCallback, disconnect, clientCredentials, redirectUri, mainUrl, listGoogleCalendars, listSyncCalendars, setCalendarEnabled, switchSyncCalendar, pullFromGoogle, ensureWatch, pushTarget } from "./lib/gcal.mts";
 import { AuthError, signup, login, currentUser, changePassword, publicUser, isAdmin, canWhatsApp } from "./lib/auth.mts";
-import { waConfig, sendCustomerMessage, customerSendAt, waUsage } from "./lib/whatsapp.mts";
+import { waConfig, sendCustomerMessage, customerSendAt, waUsage, buildDigest } from "./lib/whatsapp.mts";
 import { tr, langFrom, normLang, LANG_CODES, desc } from "./lib/i18n.mts";
 
 const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
@@ -137,6 +137,11 @@ export async function handleApi(req: Request): Promise<Response> {
         if (method === "GET") return Response.json(await db.listEvents(Object.fromEntries(url.searchParams)));
         if (method === "POST") { const e = await db.createEvent(await eventInput(), who); sync(e.id); return Response.json(e); }
       }
+      // 任务清单：打勾完成（只在 App 里）
+      if (seg[2] === "done" && method === "POST") {
+        if (!(await db.setEventDone(id, !!(await body()).done, who))) notFound();
+        return Response.json(await db.getEvent(id));
+      }
       // 在时间线发文：文字 + 照片（可只有其中一个）
       if (seg[2] === "posts" && method === "POST") {
         if (!(await db.getEvent(id))) notFound();
@@ -198,6 +203,22 @@ export async function handleApi(req: Request): Promise<Response> {
       const ok = await db.deleteComment(id);
       if (c) sync(c.event_id);
       return Response.json({ ok });
+    }
+
+    // ---------- WhatsApp 行程摘要（管理员设定） ----------
+    if (r === "digest") {
+      if (!isAdmin(me)) throw new HttpError(403, "只有管理员可以设定");
+      const cur = (await getSettings()).digest || { mode: "off", hour: 8, phones: [] };
+      if (!seg[1] && method === "GET") return Response.json({ ...cur, preview: await buildDigest(cur.mode === "weekly" ? "weekly" : "daily") });
+      if (!seg[1] && method === "PUT") {
+        const b = await body();
+        const mode = ["off", "daily", "weekly"].includes(b.mode) ? b.mode : "off";
+        const hour = Math.min(23, Math.max(0, Math.floor(Number(b.hour) || 8)));
+        const phones = String(b.phones ?? "").split(/[\n,;]+/).map((x) => x.trim()).filter(Boolean).slice(0, 20);
+        const digest = { mode, hour, phones, lastSent: cur.lastSent };
+        await saveSettings({ digest });
+        return Response.json({ ...digest, preview: await buildDigest(mode === "weekly" ? "weekly" : "daily") });
+      }
     }
 
     // ---------- 颜色标签的名称（所有人共用） ----------
