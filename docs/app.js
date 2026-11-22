@@ -1,5 +1,5 @@
 // ===================== Shared Calendar / 共享日历 =====================
-import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=61";
+import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=62";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -1201,9 +1201,10 @@ async function loadPickEvents() {
   waPickEvents = [];
   if (!v) { sel.innerHTML = `<option value="">${esc(t("wp_pick_date_first"))}</option>`; updateWaPreview(); return; }
   const from = new Date(`${v}T00:00`), to = new Date(from); to.setDate(to.getDate() + 1);
-  try { waPickEvents = (await api(`/api/events?from=${encodeURIComponent(from.toISOString())}&to=${encodeURIComponent(to.toISOString())}`)).filter((e) => dayKey(new Date(e.start)) === v || e.all_day); } catch {}
+  // 那天有在进行的行程都列出来（包括前几天开始、跨到这天的）
+  try { waPickEvents = await api(`/api/events?from=${encodeURIComponent(from.toISOString())}&to=${encodeURIComponent(to.toISOString())}`); } catch {}
   sel.innerHTML = waPickEvents.length
-    ? waPickEvents.map((e) => `<option value="${e.id}">${esc((e.all_day ? t("all_day") : fmtTime(e.start)) + " · " + e.title)}</option>`).join("")
+    ? waPickEvents.map((e) => `<option value="${e.id}">${esc((e.all_day ? t("all_day") : dayKey(new Date(e.start)) === v ? fmtTime(e.start) : fmtDateTime(e.start) + " →") + " · " + e.title)}</option>`).join("")
     : `<option value="">${esc(t("wp_none"))}</option>`;
   updateWaPreview();
 }
