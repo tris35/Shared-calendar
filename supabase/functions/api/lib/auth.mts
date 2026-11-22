@@ -58,6 +58,60 @@ export async function signup(body: any) {
   return { token: await makeToken(user), user: publicUser(user) };
 }
 
+// ---------- 忘记密码：寄 6 位数验证码到 Gmail（用 Brevo 寄信） ----------
+const codeHash = (email: string, code: string) => crypto.createHash("sha256").update(`${email}:${code}:${env("BREVO_API_KEY") || ""}`).digest("hex");
+const RESET_TEXT: Record<string, { subject: string; body: (c: string) => string }> = {
+  en: { subject: "Your password reset code", body: (c) => `Your code to reset your Shared Calendar password is:\n\n${c}\n\nIt expires in 15 minutes. If you didn't ask for this, you can ignore this email.` },
+  zh: { subject: "重设密码验证码", body: (c) => `你的共享日历重设密码验证码：\n\n${c}\n\n15 分钟内有效。如果不是你要求的，可以不理会这封信。` },
+  "zh-TW": { subject: "重設密碼驗證碼", body: (c) => `你的共享日曆重設密碼驗證碼：\n\n${c}\n\n15 分鐘內有效。如果不是你要求的，可以不理會這封信。` },
+  ms: { subject: "Kod set semula kata laluan", body: (c) => `Kod untuk set semula kata laluan Shared Calendar anda:\n\n${c}\n\nSah selama 15 minit. Jika anda tidak memintanya, abaikan e-mel ini.` },
+};
+async function sendResetMail(to: string, code: string, lang: string) {
+  const key = env("BREVO_API_KEY");
+  const from = (env("BREVO_SENDER") || fixedAdmins()[0] || "").trim();
+  if (!key || !from) throw new AuthError("忘记密码功能还没设定好，请联络管理员", 503);
+  const tx = RESET_TEXT[lang] || RESET_TEXT.en;
+  const text = tx.body(code);
+  const res = await fetch("https://api.brevo.com/v3/smtp/email", {
+    method: "POST",
+    headers: { "api-key": key, "Content-Type": "application/json", accept: "application/json" },
+    body: JSON.stringify({ sender: { email: from, name: "Shared Calendar" }, to: [{ email: to }], subject: tx.subject, textContent: text,
+      htmlContent: `<div style="font-family:sans-serif;font-size:16px">${text.replace(code, `<b style="font-size:28px;letter-spacing:4px">${code}</b>`).replace(/\n/g, "<br>")}</div>` }),
+  });
+  if (!res.ok) { console.error("brevo", res.status, await res.text().catch(() => "")); throw new AuthError("寄信失败，请稍后再试", 502); }
+}
+/** 忘记密码第 1 步：寄验证码（不透露这个 Gmail 有没有注册） */
+export async function forgotPassword(body: any, lang: string) {
+  const email = normalizeEmail(body.email);
+  if (!EMAIL_RE.test(email)) throw new AuthError("请输入正确的 Gmail 地址", 400);
+  const old = await db.getReset(email);
+  if (old && Number(old.age) < 60) throw new AuthError("请等 1 分钟再要求新的验证码", 429);
+  const user = await db.getUserByEmail(email);
+  if (!user) { await delay(600); return { ok: true }; }
+  const code = String(crypto.randomInt(0, 1000000)).padStart(6, "0");
+  await db.saveReset(email, codeHash(email, code));
+  await sendResetMail(email, code, lang);
+  return { ok: true };
+}
+/** 忘记密码第 2 步：验证码 + 新密码 → 改密码并登录 */
+export async function resetPassword(body: any) {
+  const email = normalizeEmail(body.email);
+  const code = String(body.code || "").replace(/\D/g, "");
+  const password = String(body.password || "");
+  if (!passwordOk(password)) throw new AuthError(PW_RULE, 400);
+  const r = await db.getReset(email);
+  const bad = () => new AuthError("验证码不正确或已过期", 400);
+  if (!r || new Date(r.expires_at) < new Date() || r.attempts >= 5) { await delay(600); throw bad(); }
+  const want = Buffer.from(r.code_hash, "hex"), got = Buffer.from(codeHash(email, code), "hex");
+  if (code.length !== 6 || !crypto.timingSafeEqual(want, got)) { await db.bumpResetAttempts(email); await delay(600); throw bad(); }
+  const user = await db.getUserByEmail(email);
+  if (!user) throw bad();
+  await db.setUserPassword(user.id, await hashPassword(password));
+  await db.deleteReset(email);
+  const fresh = await db.getUserByEmail(email);
+  return { token: await makeToken(fresh), user: publicUser(fresh) };
+}
+
 /** 登录 */
 export async function login(body: any) {
   const email = normalizeEmail(body.email);

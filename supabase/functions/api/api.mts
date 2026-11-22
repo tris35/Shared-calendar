@@ -8,7 +8,7 @@ import * as db from "./lib/db.mts";
 import { getSettings, saveSettings, sign } from "./lib/settings.mts";
 import { chat, claudeEnabled } from "./lib/claude.mts";
 import { syncEvent, deleteGoogleEvents, authUrl, handleCallback, disconnect, clientCredentials, redirectUri, mainUrl, listGoogleCalendars, listSyncCalendars, setCalendarEnabled, switchSyncCalendar, retryFailedSyncs, pullFromGoogle, ensureWatch, pushTarget } from "./lib/gcal.mts";
-import { AuthError, signup, login, currentUser, changePassword, publicUser, isAdmin, canWhatsApp, fixedAdmins } from "./lib/auth.mts";
+import { AuthError, signup, login, forgotPassword, resetPassword, currentUser, changePassword, publicUser, isAdmin, canWhatsApp, fixedAdmins } from "./lib/auth.mts";
 import { waConfig, sendCustomerMessage, sendTimeFor, waUsage, buildDigest } from "./lib/whatsapp.mts";
 import { tr, langFrom, normLang, LANG_CODES, desc } from "./lib/i18n.mts";
 
@@ -52,6 +52,8 @@ export async function handleApi(req: Request): Promise<Response> {
     if (seg[0] === "auth" && method === "POST") {
       if (seg[1] === "signup") return Response.json(await signup(await body()));
       if (seg[1] === "login") return Response.json(await login(await body()));
+      if (seg[1] === "forgot") return Response.json(await forgotPassword(await body(), lang));
+      if (seg[1] === "reset") return Response.json(await resetPassword(await body()));
     }
     // Google 推送通知：Google 日历有变更 → 马上读回 App
     if (seg[0] === "google" && seg[1] === "push" && method === "POST") {
@@ -105,11 +107,10 @@ export async function handleApi(req: Request): Promise<Response> {
       return b;
     };
     const eventDetail = async (eid: number) => {
-      const e = await db.getEvent(eid);
+      // 同时查（不要一个等一个），打开行程更快
+      const [e, g, { timezone }, feed] = await Promise.all([db.getEvent(eid), db.getEventGoogle(eid, me.id), getSettings(), db.eventFeed(eid)]);
       if (!e) notFound();
-      const g = await db.getEventGoogle(eid, me.id);
-      const { timezone } = await getSettings();
-      return { ...e, google: g ? { synced_at: g.synced_at, error: g.error } : null, feed: await db.eventFeed(eid),
+      return { ...e, google: g ? { synced_at: g.synced_at, error: g.error } : null, feed,
         customer_send_at: e.start ? sendTimeFor(e, timezone).toISOString() : null, customer_send_custom: !!e.customer_send_at,
         customer_error: e.customer_error ? tr(e.customer_error, lang) : null };
     };

@@ -858,3 +858,7 @@ body.viewer #detailMenuBtn, body.viewer #deleteEventBtn, body.viewer #editEventB
 #boardSeg[hidden], #dPayBox[hidden], .stat[hidden], #eventForm .row[hidden], form .row[hidden] { display: none !important; }
 .tabbar button[hidden], .d-stage[hidden], label[hidden] { display: none !important; }
 .logout-row { justify-content: center; padding: 8px 0 24px; } .logout-row .btn { min-width: 200px; }
+.forgot-link { display: block; margin: 12px auto 0; font-size: 14px; }
+.fp-title { font-size: 20px; margin: 4px 0 6px; }
+.fp-code { font-size: 22px; letter-spacing: 6px; text-align: center; }
+#forgotForm[hidden], #fpStep2[hidden], .auth-tabs[hidden], .auth-foot[hidden], .forgot-link[hidden] { display: none !important; }

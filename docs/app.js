@@ -1,5 +1,5 @@
 // ===================== Shared Calendar / 共享日历 =====================
-import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=80";
+import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=81";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -45,7 +45,7 @@ function progressStart(key) {
     $("#progressText").textContent = t(key);
     popTop();
     $("#progressPop").className = "progress-pop show";
-  }, 150);
+  }, 250);
 }
 function progressEnd(okKey) {
   pgCount = Math.max(0, pgCount - 1);
@@ -55,7 +55,7 @@ function progressEnd(okKey) {
     $("#progressText").textContent = t(okKey);
     popTop();
     $("#progressPop").className = "progress-pop show done";
-    pgDoneTimer = setTimeout(popHide, 900);
+    pgDoneTimer = setTimeout(popHide, 550);
   } else popHide();
 }
 // 放到最上层（盖过正在打开的视窗，例如编辑行程）
@@ -367,7 +367,7 @@ $("#addEventBtn").onclick = () => openEditor(null, state.selected);
 let current = null; // 正在看的行程（含 feed）
 async function openDetail(id) {
   // 先用已经载入的资料马上打开（不用等网络），再在背景补上留言、照片等完整资料
-  const cached = (state.events || []).find((x) => x.id === id) || (state.weekEvents || []).find((x) => x.id === id);
+  const cached = (state.events || []).find((x) => x.id === id) || (state.weekEvents || []).find((x) => x.id === id) || (state.homeEvents || []).find((x) => x.id === id);
   if (cached) {
     current = { ...cached, feed: [], google: null };
     showDetailNow(id);
@@ -1479,6 +1479,7 @@ function setAuthMode(mode) {
   $("#authPassword").autocomplete = signup ? "new-password" : "current-password";
   $("#authFootText").textContent = signup ? t("have_acct") : t("no_acct");
   $("#authSwitch").textContent = signup ? t("tab_login") : t("tab_signup");
+  $("#forgotLink").hidden = signup;
 }
 $("#tabLogin").onclick = () => { setAuthMode("login"); $("#authError").textContent = ""; };
 $("#tabSignup").onclick = () => { setAuthMode("signup"); $("#authError").textContent = ""; };
@@ -1507,6 +1508,46 @@ $("#authForm").addEventListener("submit", async (ev) => {
     await startApp();
   } catch (e) { err.textContent = e.message; }
   btn.disabled = false;
+});
+
+// ---------- 忘记密码 ----------
+function showForgot(on) {
+  $("#authForm").hidden = on; $("#forgotForm").hidden = !on;
+  document.querySelector(".auth-tabs").hidden = on; document.querySelector(".auth-foot").hidden = on;
+  $("#fpError").textContent = "";
+  if (on) { $("#fpEmail").value = $("#authEmail").value.trim(); $("#fpStep2").hidden = true; $("#fpHint").textContent = t("fp_hint"); setTimeout(() => $("#fpEmail").focus(), 50); }
+}
+$("#forgotLink").onclick = () => showForgot(true);
+$("#fpBack").onclick = () => showForgot(false);
+$("#fpSend").onclick = async () => {
+  const email = $("#fpEmail").value.trim(), err = $("#fpError");
+  err.textContent = "";
+  if (!EMAIL_RE.test(email)) { err.textContent = t("err_email"); return; }
+  const b = $("#fpSend"); b.disabled = true;
+  try {
+    await api("/api/auth/forgot", { method: "POST", body: { email } });
+    $("#fpHint").textContent = t("fp_sent", { email });
+    $("#fpStep2").hidden = false; $("#fpSend").textContent = t("fp_resend");
+    setTimeout(() => $("#fpCode").focus(), 50);
+  } catch (e) { err.textContent = e.message; }
+  setTimeout(() => { b.disabled = false; }, 3000);
+};
+$("#forgotForm").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const email = $("#fpEmail").value.trim(), code = $("#fpCode").value.replace(/\D/g, ""), password = $("#fpPassword").value, err = $("#fpError");
+  err.textContent = "";
+  if (code.length !== 6) { err.textContent = t("fp_code_err"); return; }
+  if (!passwordOk(password)) { err.textContent = t("err_pw_rule"); return; }
+  const b = $("#fpReset"); b.disabled = true;
+  try {
+    const r = await api("/api/auth/reset", { method: "POST", body: { email, code, password } });
+    store.set("token", r.token);
+    $("#fpPassword").value = ""; $("#fpCode").value = "";
+    showForgot(false);
+    await startApp();
+    toast(t("fp_done"));
+  } catch (e) { err.textContent = e.message; }
+  b.disabled = false;
 });
 
 // ---------- 启动 ----------
@@ -1564,7 +1605,7 @@ async function renderHome() {
   $("#homeHello").textContent = t(h < 12 ? "h_morning" : h < 18 ? "h_afternoon" : "h_evening", { name });
   $("#homeDate").textContent = now.toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "long" });
   let evs = [];
-  try { evs = await fetchRange(addDays(today, -120), addDays(today, 180)); } catch (e) { $("#homeList").innerHTML = `<p class="hint warn">${esc(e.message)}</p>`; return; }
+  try { evs = state.homeEvents = await fetchRange(addDays(today, -120), addDays(today, 180)); } catch (e) { $("#homeList").innerHTML = `<p class="hint warn">${esc(e.message)}</p>`; return; }
   const todayK = dayKey(today);
   const todays = evs.filter((e) => eventDays(e).includes(todayK)).sort((a, b) => (b.all_day - a.all_day) || new Date(a.start) - new Date(b.start));
   const wk0 = weekStart(0), wk1 = addDays(wk0, 7);
