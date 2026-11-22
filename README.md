@@ -8,6 +8,20 @@ A shared calendar and booking app for a small studio, team or family — calenda
 
 ---
 
+## 📸 Screenshots
+
+| Log in | 🏠 Today | 📅 Calendar |
+|:---:|:---:|:---:|
+| <img src="screenshots/0-login.png" width="240" alt="Log in"> | <img src="screenshots/1-today.png" width="240" alt="Today"> | <img src="screenshots/2-calendar.png" width="240" alt="Calendar"> |
+| **Day timeline** | **New event** | **📋 Board – Pipeline** |
+| <img src="screenshots/3-day.png" width="240" alt="Day timeline"> | <img src="screenshots/4-new-event.png" width="240" alt="New event"> | <img src="screenshots/5-board-pipeline.png" width="240" alt="Pipeline"> |
+| **💵 Board – Payments** | **📊 Board – Workload** | **🎨 Labels & people** |
+| <img src="screenshots/6-board-payments.png" width="240" alt="Payments"> | <img src="screenshots/7-board-workload.png" width="240" alt="Workload"> | <img src="screenshots/8-labels.png" width="240" alt="Labels"> |
+| **📲 WhatsApp Schedule** | **⚙️ Settings** | |
+| <img src="screenshots/9-whatsapp.png" width="240" alt="WhatsApp Schedule"> | <img src="screenshots/10-settings.png" width="240" alt="Settings"> | |
+
+---
+
 ## ✨ Features
 
 ### 🏠 Today (home screen)
