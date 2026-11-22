@@ -1,5 +1,5 @@
 // ===================== Shared Calendar / 共享日历 =====================
-import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=72";
+import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=73";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -1921,11 +1921,6 @@ $("#calLeaveBtn").onclick = async () => {
     await api(`/api/calendars/${state.cal.id}/people/${state.me.id}`, { method: "DELETE" });
     store.set("cal", ""); location.reload();
   } catch (e) { toast(e.message); }
-};
-$("#calNewBtn").onclick = async () => {
-  const name = prompt(t("cl_new_prompt"));
-  if (!name || !name.trim()) return;
-  try { const r = await api("/api/calendars", { method: "POST", body: { name } }); await switchCalendar(r.id); renderCalCard(); } catch (e) { toast(e.message); }
 };
 $("#calGoogleSel").addEventListener("change", async (ev) => {
   try { await api("/api/google/app-calendar", { method: "PUT", body: { calendarId: Number(ev.target.value) } }); } catch (e) { toast(e.message); }

@@ -16,7 +16,7 @@
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
   <meta name="mobile-web-app-capable" content="yes" />
   <title>Shared Calendar</title>
-  <link rel="stylesheet" href="style.css?v=72" />
+  <link rel="stylesheet" href="style.css?v=73" />
 </head>
 <body class="locked">
   <!-- 登录 / 注册（打开 App 前） -->
@@ -231,7 +231,7 @@
           </div>
           <h4 data-i18n="cl_people"></h4>
           <ul id="calPeople" class="cal-people"></ul>
-          <div class="actions"><button type="button" class="btn small" id="calNewBtn" data-i18n="cl_new"></button><span class="spacer"></span>
+          <div class="actions"><span class="spacer"></span>
             <button type="button" class="btn danger small" id="calLeaveBtn" data-i18n="cl_leave"></button></div>
           <div id="calGoogleBox"><h4 data-i18n="cl_google_title"></h4>
           <label><span data-i18n="cl_google_hint"></span><select id="calGoogleSel"></select></label></div>
@@ -555,8 +555,8 @@
   </dialog>
 
   <div id="toast" class="toast" role="status"></div>
-  <script src="config.js?v=72"></script>
-  <script src="app.js?v=72" type="module"></script>
+  <script src="config.js?v=73"></script>
+  <script src="app.js?v=73" type="module"></script>
   <script>
     if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
   </script>
