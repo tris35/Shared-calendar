@@ -233,9 +233,27 @@ function renderDay() {
         <div class="t">${esc(e.title)}</div>
         <div class="s">${e.all_day ? esc(t("all_day")) : fmtTime(e.start) + (e.end ? " – " + fmtTime(e.end) : "")}${e.member_name ? " · " + esc((e.member_emoji ? e.member_emoji + " " : "") + e.member_name) : ""}${e.photo_count ? " · 📷" + e.photo_count : ""}${e.memo_count ? " · 💬" + e.memo_count : ""}</div>
       </div>
+      <button type="button" class="card-del" data-del="${e.id}" title="${esc(t("menu_delete"))}" aria-label="${esc(t("menu_delete"))}">🗑</button>
     </li>`).join("") : `<li class="empty">${esc(t("day_empty"))}</li>`;
 }
-$("#dayList").addEventListener("click", (ev) => { const li = ev.target.closest(".item"); if (li) openDetail(Number(li.dataset.id)); });
+$("#dayList").addEventListener("click", (ev) => {
+  const del = ev.target.closest("[data-del]");
+  if (del) { ev.stopPropagation(); const e = state.events.find((x) => x.id === Number(del.dataset.del)); if (e) deleteEventAsk(e); return; }
+  const li = ev.target.closest(".item"); if (li) openDetail(Number(li.dataset.id));
+});
+// 删除行程：App 和 Google 日历都会删除
+async function deleteEventAsk(e, after) {
+  const msg = t("delete_event_confirm", { title: e.title }) + (state.me?.google ? t("delete_event_confirm_g") : "");
+  if (!(await askConfirm(msg, t("delete")))) return false;
+  try {
+    await api(`/api/events/${e.id}`, { method: "DELETE" });
+    toast(t("deleted"));
+    after?.();
+    await loadMonth();
+    if (state.view === "week") renderWeek();
+    return true;
+  } catch (err) { toast(err.message); return false; }
+}
 $("#prevMonth").onclick = () => { state.month.setMonth(state.month.getMonth() - 1); loadMonth(); };
 $("#nextMonth").onclick = () => { state.month.setMonth(state.month.getMonth() + 1); loadMonth(); };
 $("#todayBtn").onclick = () => { const d = new Date(); state.selected = d; state.month = new Date(d.getFullYear(), d.getMonth(), 1); loadMonth(); };
@@ -403,15 +421,8 @@ $("#detailSyncBtn").onclick = async () => {
   } catch (e) { toast(t("sync_fail", { error: e.message })); }
   openDetail(current.id);
 };
-$("#detailDeleteBtn").onclick = async () => {
-  $("#detailMenu").hidden = true;
-  const msg = t("delete_event_confirm", { title: current.title }) + (state.me?.google ? t("delete_event_confirm_g") : "");
-  if (!(await askConfirm(msg, t("delete")))) return;
-  await api(`/api/events/${current.id}`, { method: "DELETE" });
-  closeDetail();
-  toast(t("deleted"));
-  loadMonth();
-};
+$("#detailDeleteBtn").onclick = () => { $("#detailMenu").hidden = true; deleteEventAsk(current, closeDetail); };
+$("#detailTrashBtn").onclick = () => deleteEventAsk(current, closeDetail);
 
 // 发留言 / 照片
 let postFiles = [];
