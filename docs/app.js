@@ -1,5 +1,5 @@
 // ===================== Shared Calendar / 共享日历 =====================
-import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=33";
+import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=34";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -956,7 +956,7 @@ async function renderSettings() {
     $("#waStatus").textContent = state.config?.whatsapp ? t("wa_ready") : t("wa_not_ready");
     $("#waNoAccess").hidden = !!me.can_whatsapp;
     $("#waAdmin").hidden = !me.admin;
-    if (me.admin) { loadWaUsers(); loadDigest(); }
+    if (me.admin) { loadWaUsers(); loadDigest(); loadAdmins(); }
     loadWaUsage();
     if (document.activeElement !== $("#acctName")) $("#acctName").value = me.name;
     if (document.activeElement !== $("#tzInput")) $("#tzInput").value = set.timezone;
@@ -1116,6 +1116,22 @@ $("#weekDays").addEventListener("click", async (ev) => {
   const li = ev.target.closest(".wk-item");
   if (li) openDetail(Number(li.dataset.id));
 });
+
+// ---------- 管理员名单（管理员可以加别的 Gmail 当管理员） ----------
+async function loadAdmins() {
+  try {
+    const a = await api("/api/admin/admins");
+    $("#admFixed").textContent = a.fixed.length ? t("adm_fixed", { list: a.fixed.join(", ") }) : "";
+    $("#admEmails").value = (a.extra || []).join(", ");
+  } catch (e) { $("#admFixed").textContent = e.message; }
+}
+$("#admSave").onclick = async () => {
+  try {
+    const a = await api("/api/admin/admins", { method: "PUT", body: { emails: $("#admEmails").value } });
+    $("#admEmails").value = (a.extra || []).join(", ");
+    loadWaUsers();
+  } catch (e) { toast(t("save_failed", { error: e.message })); }
+};
 
 // ---------- WhatsApp 行程摘要（管理员） ----------
 $("#dgHour").innerHTML = Array.from({ length: 24 }, (_, h) => `<option value="${h}">${String(h).padStart(2, "0")}:00</option>`).join("");

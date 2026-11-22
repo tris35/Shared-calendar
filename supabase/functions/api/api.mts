@@ -8,7 +8,7 @@ import * as db from "./lib/db.mts";
 import { getSettings, saveSettings, sign } from "./lib/settings.mts";
 import { chat, claudeEnabled } from "./lib/claude.mts";
 import { syncEvent, deleteGoogleEvents, authUrl, handleCallback, disconnect, clientCredentials, redirectUri, mainUrl, listGoogleCalendars, listSyncCalendars, setCalendarEnabled, switchSyncCalendar, retryFailedSyncs, pullFromGoogle, ensureWatch, pushTarget } from "./lib/gcal.mts";
-import { AuthError, signup, login, currentUser, changePassword, publicUser, isAdmin, canWhatsApp } from "./lib/auth.mts";
+import { AuthError, signup, login, currentUser, changePassword, publicUser, isAdmin, canWhatsApp, fixedAdmins } from "./lib/auth.mts";
 import { waConfig, sendCustomerMessage, customerSendAt, waUsage, buildDigest } from "./lib/whatsapp.mts";
 import { tr, langFrom, normLang, LANG_CODES, desc } from "./lib/i18n.mts";
 
@@ -292,6 +292,14 @@ export async function handleApi(req: Request): Promise<Response> {
     // ---------- 管理员：谁可以发 WhatsApp ----------
     if (r === "admin") {
       if (!isAdmin(me)) throw new HttpError(403, "只有管理员可以设定");
+      // 管理员名单：固定的（Supabase 密钥）＋ App 里加的
+      if (seg[1] === "admins" && method === "GET") return Response.json({ fixed: fixedAdmins(), extra: (await getSettings()).adminEmails || [] });
+      if (seg[1] === "admins" && method === "PUT") {
+        const emails = [...new Set(String((await body()).emails ?? "").toLowerCase().split(/[\s,;]+/).map((x) => x.trim()).filter((x) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x)))]
+          .filter((x) => !fixedAdmins().includes(x)).slice(0, 20);
+        await saveSettings({ adminEmails: emails });
+        return Response.json({ fixed: fixedAdmins(), extra: emails });
+      }
       // 每个月上限（例如 Kapso 免费方案）；0 或空 = 不限
       if (seg[1] === "wa-limit" && method === "PUT") {
         const n = Math.floor(Number((await body()).limit) || 0);

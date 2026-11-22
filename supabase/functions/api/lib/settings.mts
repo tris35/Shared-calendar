@@ -13,6 +13,7 @@ export type Settings = {
   cronUrl?: string;            // 排程要呼叫的网址（这个函数自己的网址，自动记下）
   labelNames?: Record<string, string>; // 颜色标签的自订名称（例如 番茄红 = 拍摄），所有人共用
   digest?: Digest;             // WhatsApp 行程摘要（每天 / 每周）
+  adminEmails?: string[];      // 在 App「设置」加的管理员（另外还有 Supabase 密钥 ADMIN_EMAILS）
 };
 
 export type Digest = {
@@ -21,6 +22,9 @@ export type Digest = {
   phones: string[];                 // 收件人电话
   lastSent?: string;                // 最后一次发送的日期（YYYY-MM-DD），避免重复
 };
+
+/** 在 App 里加的管理员（小写），getSettings / saveSettings 时更新 */
+export let extraAdmins: string[] = [];
 
 let cache: { at: number; value: Settings } | null = null;
 
@@ -35,6 +39,7 @@ export async function getSettings(): Promise<Settings> {
   if (base && s.cronUrl !== base) { s.cronUrl = base; changed = true; }
   if (changed) await setKv("app", s);
   cache = { at: Date.now(), value: s as Settings };
+  extraAdmins = (s.adminEmails || []).map((x) => x.toLowerCase());
   return s as Settings;
 }
 
@@ -42,6 +47,7 @@ export async function saveSettings(patch: Partial<Settings>) {
   const s = { ...(await getSettings()), ...patch };
   await setKv("app", s);
   cache = { at: Date.now(), value: s };
+  extraAdmins = (s.adminEmails || []).map((x) => x.toLowerCase());
   return s;
 }
 

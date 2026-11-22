@@ -3,7 +3,7 @@ import { env } from "./env.mts";
 import crypto from "node:crypto";
 import { Buffer } from "node:buffer";
 import * as db from "./db.mts";
-import { sign, verify } from "./settings.mts";
+import { sign, verify, extraAdmins } from "./settings.mts";
 import { normLang } from "./i18n.mts";
 
 // 登录不会过期：直到在「设置」按「登出」，或修改密码（其他设备会被登出）
@@ -89,7 +89,11 @@ export async function changePassword(user: any, body: any) {
   return { token: await makeToken(await db.getUser(user.id)) };
 }
 
-// 管理员：Supabase 函数密钥 ADMIN_EMAILS（逗号分隔的 Gmail）
-export const isAdmin = (u: any) => (env("ADMIN_EMAILS") || "").toLowerCase().split(/[,\s]+/).filter(Boolean).includes(String(u?.email || "").toLowerCase());
+// 管理员：Supabase 函数密钥 ADMIN_EMAILS（固定的）＋ 在 App「设置」里加的
+export const fixedAdmins = () => (env("ADMIN_EMAILS") || "").toLowerCase().split(/[,\s]+/).filter(Boolean);
+export const isAdmin = (u: any) => {
+  const email = String(u?.email || "").toLowerCase();
+  return !!email && (fixedAdmins().includes(email) || extraAdmins.includes(email));
+};
 export const canWhatsApp = (u: any) => isAdmin(u) || !!u?.wa_allowed;
 export const publicUser = (u: any) => ({ id: u.id, email: u.email, name: u.name, lang: u.lang || "en", admin: isAdmin(u), can_whatsapp: canWhatsApp(u) });
