@@ -9,7 +9,7 @@ import { getSettings, saveSettings, sign } from "./lib/settings.mts";
 import { chat, claudeEnabled } from "./lib/claude.mts";
 import { syncEvent, deleteGoogleEvents, authUrl, handleCallback, disconnect, clientCredentials, redirectUri, mainUrl, listGoogleCalendars, listSyncCalendars, setCalendarEnabled, switchSyncCalendar, retryFailedSyncs, pullFromGoogle, ensureWatch, pushTarget } from "./lib/gcal.mts";
 import { AuthError, signup, login, currentUser, changePassword, publicUser, isAdmin, canWhatsApp, fixedAdmins } from "./lib/auth.mts";
-import { waConfig, sendCustomerMessage, customerSendAt, waUsage, buildDigest, customerText } from "./lib/whatsapp.mts";
+import { waConfig, sendCustomerMessage, customerSendAt, waUsage, buildDigest } from "./lib/whatsapp.mts";
 import { tr, langFrom, normLang, LANG_CODES, desc } from "./lib/i18n.mts";
 
 const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
@@ -128,7 +128,7 @@ export async function handleApi(req: Request): Promise<Response> {
 
     if (r === "config" && method === "GET") {
       const s = await getSettings();
-      return Response.json({ claude: claudeEnabled(), timezone: s.timezone, labels: db.LABELS, labelNames: s.labelNames || {}, googleLoginReady: !!clientCredentials(), whatsapp: !!waConfig(), siteUrl: mainUrl(siteUrl), googleRedirectUri: redirectUri() });
+      return Response.json({ claude: claudeEnabled(), timezone: s.timezone, labels: db.LABELS, labelNames: s.labelNames || {}, waDefault: s.waDefault || "", googleLoginReady: !!clientCredentials(), whatsapp: !!waConfig(), siteUrl: mainUrl(siteUrl), googleRedirectUri: redirectUri() });
     }
 
     // ---------- 行程 ----------
@@ -293,12 +293,11 @@ export async function handleApi(req: Request): Promise<Response> {
     if (r === "admin") {
       if (!isAdmin(me)) throw new HttpError(403, "只有管理员可以设定");
       // 给客户的讯息：自己写的开头 / 结尾
-      if (seg[1] === "wa-text" && method === "GET") { const s = await getSettings(); return Response.json({ intro: s.waIntro || "", outro: s.waOutro || "" }); }
+      // 新行程「给客户的讯息」的默认内容
+      if (seg[1] === "wa-text" && method === "GET") return Response.json({ text: (await getSettings()).waDefault || "" });
       if (seg[1] === "wa-text" && method === "PUT") {
-        const b = await body();
-        await saveSettings({ waIntro: String(b.intro ?? "").slice(0, 300), waOutro: String(b.outro ?? "").slice(0, 300) });
-        const sample = { customer_name: "Kenji", title: "Kenji pre-wedding shoot", start: new Date(Date.now() + 86400000).toISOString(), all_day: false, customer_note: "Please arrive 15 minutes early." };
-        return Response.json({ ok: true, preview: await customerText(sample) });
+        await saveSettings({ waDefault: String((await body()).text ?? "").slice(0, 2000), waIntro: "", waOutro: "" });
+        return Response.json({ ok: true });
       }
       // 管理员名单：固定的（Supabase 密钥）＋ App 里加的
       if (seg[1] === "admins" && method === "GET") return Response.json({ fixed: fixedAdmins(), extra: (await getSettings()).adminEmails || [] });

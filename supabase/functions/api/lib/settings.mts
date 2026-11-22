@@ -15,6 +15,7 @@ export type Settings = {
   digest?: Digest;             // WhatsApp 行程摘要（每天 / 每周）
   waIntro?: string;            // 给客户的讯息：自己写的开头（可用 {title} {date} {time}）
   waOutro?: string;            // 给客户的讯息：自己写的结尾
+  waDefault?: string;          // 新行程「给客户的讯息」默认内容
   adminEmails?: string[];      // 在 App「设置」加的管理员（另外还有 Supabase 密钥 ADMIN_EMAILS）
 };
 

@@ -1,5 +1,5 @@
 // ===================== Shared Calendar / 共享日历 =====================
-import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=37";
+import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=38";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -766,6 +766,7 @@ function openEditor(e, day, hour) {
     eventForm.start.value = toLocalInput(d.toISOString());
     eventForm.remind.checked = true;
     eventForm.customer_auto.checked = true;
+    eventForm.customer_note.value = state.config?.waDefault || ""; // 新行程：先放默认讯息（可以改）
   }
   fillDateTime();
   $("#titleEmojis").hidden = true;
@@ -1121,12 +1122,12 @@ $("#weekDays").addEventListener("click", async (ev) => {
 
 // ---------- 给客户的讯息：自己写的开头 / 结尾 ----------
 async function loadWaText() {
-  try { const w = await api("/api/admin/wa-text"); $("#wtIntro").value = w.intro; $("#wtOutro").value = w.outro; } catch {}
+  try { $("#wtText").value = (await api("/api/admin/wa-text")).text; } catch {}
 }
 $("#wtSave").onclick = async () => {
   try {
-    const r = await api("/api/admin/wa-text", { method: "PUT", body: { intro: $("#wtIntro").value, outro: $("#wtOutro").value } });
-    $("#wtPreview").textContent = (r.preview || "").split(" | ").join("\n");
+    await api("/api/admin/wa-text", { method: "PUT", body: { text: $("#wtText").value } });
+    if (state.config) state.config.waDefault = $("#wtText").value;
   } catch (e) { toast(t("save_failed", { error: e.message })); }
 };
 
