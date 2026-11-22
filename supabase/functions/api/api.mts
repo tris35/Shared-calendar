@@ -9,7 +9,7 @@ import { getSettings, saveSettings, sign } from "./lib/settings.mts";
 import { chat, claudeEnabled } from "./lib/claude.mts";
 import { syncEvent, deleteGoogleEvents, authUrl, handleCallback, disconnect, clientCredentials, redirectUri, mainUrl, listGoogleCalendars, listSyncCalendars, setCalendarEnabled, switchSyncCalendar, retryFailedSyncs, pullFromGoogle, ensureWatch, pushTarget } from "./lib/gcal.mts";
 import { AuthError, signup, login, currentUser, changePassword, publicUser, isAdmin, canWhatsApp, fixedAdmins } from "./lib/auth.mts";
-import { waConfig, sendCustomerMessage, customerSendAt, waUsage, buildDigest } from "./lib/whatsapp.mts";
+import { waConfig, sendCustomerMessage, sendTimeFor, waUsage, buildDigest } from "./lib/whatsapp.mts";
 import { tr, langFrom, normLang, LANG_CODES, desc } from "./lib/i18n.mts";
 
 const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
@@ -85,7 +85,7 @@ export async function handleApi(req: Request): Promise<Response> {
     // 没有 WhatsApp 权限 → 忽略客户电话 / 讯息 / 自动发送的修改
     const eventInput = async () => {
       const b = await body();
-      if (!canWhatsApp(me)) { delete b.customer_phone; delete b.customer_note; delete b.customer_auto; delete b.customer_name; }
+      if (!canWhatsApp(me)) { delete b.customer_phone; delete b.customer_note; delete b.customer_auto; delete b.customer_name; delete b.customer_send_at; }
       return b;
     };
     const eventDetail = async (eid: number) => {
@@ -94,7 +94,7 @@ export async function handleApi(req: Request): Promise<Response> {
       const g = await db.getEventGoogle(eid, me.id);
       const { timezone } = await getSettings();
       return { ...e, google: g ? { synced_at: g.synced_at, error: g.error } : null, feed: await db.eventFeed(eid),
-        customer_send_at: e.start ? customerSendAt(e.start, timezone).toISOString() : null,
+        customer_send_at: e.start ? sendTimeFor(e, timezone).toISOString() : null, customer_send_custom: !!e.customer_send_at,
         customer_error: e.customer_error ? tr(e.customer_error, lang) : null };
     };
 

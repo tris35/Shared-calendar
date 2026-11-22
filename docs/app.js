@@ -1,5 +1,5 @@
 // ===================== Shared Calendar / 共享日历 =====================
-import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=64";
+import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=65";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -119,7 +119,7 @@ function askConfirm(message, okText) {
     const done = (v) => { d.close(); resolve(v); };
     $("#confirmOk").onclick = () => done(true);
     $("#confirmCancel").onclick = () => done(false);
-    d.oncancel = () => resolve(false);
+    d.oncancel = (ev) => { ev.preventDefault(); }; // 按 Esc 不会关掉：一定要按按钮
     d.showModal();
   });
 }
@@ -1109,7 +1109,7 @@ function renderWeekWa(evs) {
   const list = evs.filter((e) => e.customer_phone && e.customer_note && !e.customer_hidden);
   box.hidden = !state.me?.can_whatsapp;
   if (box.hidden) return;
-  const sendAt = (e) => { const d = new Date(e.start); d.setDate(d.getDate() - 1); d.setHours(16, 0, 0, 0); return d; }; // 前一天下午 4 点
+  const sendAt = (e) => { if (e.customer_send_at) return new Date(e.customer_send_at); const d = new Date(e.start); d.setDate(d.getDate() - 1); d.setHours(16, 0, 0, 0); return d; }; // 自己选的，或前一天下午 4 点
   const status = (e) => {
     if (e.customer_sent_at) return ["sent", t("ww_sent", { time: fmtDateTime(e.customer_sent_at) })];
     if (e.customer_error) return ["fail", t("ww_failed")];
@@ -1211,11 +1211,22 @@ async function loadPickEvents() {
   checkWaRequired(false);
 }
 $("#wpDate").addEventListener("change", loadPickEvents);
-function fillPickCustomer() { // 选了行程：带入它已有的客户名字、电话
+fillTimeSelect($("#wpSendTime"), "16:00");
+function fillPickCustomer() { // 选了行程：带入它已有的客户名字、电话、发送时间（默认：前一天下午 4 点）
   const ev = waPickEvents.find((x) => String(x.id) === $("#wpEvent").value);
   $("#wpName").value = ev?.customer_name || "";
   $("#wpPhone").value = ev?.customer_phone || "";
+  let when = ev?.customer_send_at ? new Date(ev.customer_send_at) : null;
+  if (!when && ev) { when = new Date(ev.start); when.setDate(when.getDate() - 1); when.setHours(16, 0, 0, 0); }
+  $("#wpSendDate").value = when ? dayKey(when) : "";
+  fillTimeSelect($("#wpSendTime"), when ? `${pad(when.getHours())}:${pad(when.getMinutes())}` : "16:00");
+  updateWhenLabel();
 }
+function updateWhenLabel() {
+  const d = $("#wpSendDate").value, tm = $("#wpSendTime").value;
+  $("#wpWhenLabel").textContent = d && tm ? t("wp_when_label", { time: fmtDateTime(new Date(`${d}T${tm}`).toISOString()) }) : t("dg_prev_customer");
+}
+["#wpSendDate", "#wpSendTime"].forEach((sel) => $(sel).addEventListener("change", () => { updateWhenLabel(); checkWaRequired(true); }));
 $("#wpEvent").addEventListener("change", () => { fillPickCustomer(); updateWaPreview(); });
 let waPrevTimer = null;
 function updateWaPreview() {
@@ -1243,11 +1254,12 @@ $("#dgDate").addEventListener("change", updateWaPreview);
 const validPhone = (p) => p.replace(/\D/g, "").length >= 8;
 function checkWaRequired(show) {
   const okMsg = !!$("#wtText").value.trim(), okEv = !!$("#wpEvent").value, okPh = validPhone($("#wpPhone").value);
-  $("#waAutoSave").disabled = !(okMsg && okEv && okPh);
-  if (show) { $("#errMsg").hidden = okMsg; $("#errEvent").hidden = okEv; $("#errPhone").hidden = okPh; }
+  const okWhen = !!$("#wpSendDate").value && !!$("#wpSendTime").value;
+  $("#waAutoSave").disabled = !(okMsg && okEv && okPh && okWhen);
+  if (show) { $("#errMsg").hidden = okMsg; $("#errEvent").hidden = okEv; $("#errPhone").hidden = okPh; $("#errWhen").hidden = okWhen; }
   $("#wtText").classList.toggle("invalid", show && !okMsg);
   $("#wpPhone").classList.toggle("invalid", show && !okPh);
-  return okMsg && okEv && okPh;
+  return okMsg && okEv && okPh && okWhen;
 }
 ["#wtText", "#wpPhone", "#wpName"].forEach((sel) => $(sel).addEventListener("input", () => checkWaRequired(false)));
 ["#wtText", "#wpPhone"].forEach((sel) => $(sel).addEventListener("blur", () => checkWaRequired(true)));
@@ -1255,6 +1267,13 @@ $("#wpEvent").addEventListener("change", () => checkWaRequired(false));
 $("#waAutoSave").onclick = async () => {
   if (!checkWaRequired(true)) return; // 没填完不能保存
   const evId = $("#wpEvent").value, phone = $("#wpPhone").value.trim();
+  // 这个行程已经有给客户的讯息 → 提醒（视窗一直开着，直到按 OK 或取消）
+  const ev = waPickEvents.find((x) => String(x.id) === evId);
+  if (ev?.customer_phone && ev?.customer_note) {
+    const msg = t(ev.customer_sent_at ? "wp_dup_sent" : "wp_dup", { title: ev.title, phone: ev.customer_phone });
+    if (!(await askConfirm(msg, t("ok")))) return;
+  }
+  const sendAt = new Date(`${$("#wpSendDate").value}T${$("#wpSendTime").value}`).toISOString();
   try {
     await api("/api/admin/wa-text", { method: "PUT", body: { text: $("#wtText").value } });
     if (state.config) state.config.waDefault = $("#wtText").value;
@@ -1262,7 +1281,7 @@ $("#waAutoSave").onclick = async () => {
       // 把讯息排进这个行程：前一天下午 4 点自动发给客户
       const saved = await api(`/api/events/${evId}`, { method: "PATCH", body: {
         customer_phone: phone, customer_name: $("#wpName").value.trim() || null,
-        customer_note: $("#wtText").value.trim(), customer_auto: true } });
+        customer_note: $("#wtText").value.trim(), customer_auto: true, customer_send_at: sendAt } });
       // 跳到那个行程所在的星期，马上在 WhatsApp Schedule 看到
       const target = new Date(saved.start || `${$("#wpDate").value}T12:00`);
       state.weekOffset = Math.round((startOfWeek(target) - weekStart(0)) / (7 * 86400000));

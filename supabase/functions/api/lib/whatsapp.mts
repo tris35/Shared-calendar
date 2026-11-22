@@ -55,6 +55,10 @@ export function flattenNote(note: string) {
 }
 
 /** 行程开始 → 发送时间（前一天下午 4 点，当地时间） */
+/** 这个行程的发送时间：自己选的，或前一天下午 4 点 */
+export function sendTimeFor(e: any, tz: string) {
+  return e.customer_send_at ? new Date(e.customer_send_at) : customerSendAt(new Date(e.start).toISOString(), tz);
+}
 export function customerSendAt(startIso: string, tz: string) {
   const ymd = new Date(startIso).toLocaleDateString("en-CA", { timeZone: tz }); // YYYY-MM-DD
   const [y, m, d] = ymd.split("-").map(Number);
@@ -146,7 +150,7 @@ export async function sendDueCustomerMessages() {
   const { timezone } = await getSettings();
   let sent = 0, failed = 0;
   for (const e of await db.pendingCustomerMessages()) {
-    if (customerSendAt(new Date(e.start).toISOString(), timezone).getTime() > Date.now()) continue;
+    if (sendTimeFor(e, timezone).getTime() > Date.now()) continue;
     try { const r: any = await sendCustomerMessage(e.id); if (r.ok) sent++; }
     catch (err: any) { failed++; console.error(`[WhatsApp] 行程 ${e.id} 发送失败：`, err?.message || err); }
   }

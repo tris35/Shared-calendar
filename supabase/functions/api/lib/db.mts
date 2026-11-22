@@ -85,10 +85,10 @@ export async function createEvent(e: any, author?: string | null) {
   const start = toIso(e.start), end = toIso(e.end);
   if (!start) throw new Error("请填写开始时间");
   if (end && end < start) throw new Error("结束时间不能早于开始时间");
-  const [r] = await sql`INSERT INTO events (title, start, "end", all_day, notes, label, member_id, remind, created_by, customer_phone, customer_note, customer_auto, customer_name)
+  const [r] = await sql`INSERT INTO events (title, start, "end", all_day, notes, label, member_id, remind, created_by, customer_phone, customer_note, customer_auto, customer_name, customer_send_at)
     VALUES (${title}, ${start}, ${end}, ${!!e.all_day}, ${clean(e.notes, 5000)}, ${checkLabel(e.label)},
             ${e.member_id ?? null}, ${e.remind === undefined ? true : !!e.remind}, ${clean(author, 60)},
-            ${clean(e.customer_phone, 40)}, ${clean(e.customer_note, 2000)}, ${e.customer_auto === undefined ? true : !!e.customer_auto}, ${clean(e.customer_name, 80)})
+            ${clean(e.customer_phone, 40)}, ${clean(e.customer_note, 2000)}, ${e.customer_auto === undefined ? true : !!e.customer_auto}, ${clean(e.customer_name, 80)}, ${e.customer_send_at ? toIso(e.customer_send_at) : null})
     RETURNING id`;
   await logEvent(r.id, author, "created");
   return getEvent(r.id);
@@ -126,6 +126,7 @@ export async function updateEvent(id: number, e: any, author?: string | null) {
     remind: e.remind !== undefined ? !!e.remind : !!old.remind,
     customer_phone: e.customer_phone !== undefined ? clean(e.customer_phone, 40) : old.customer_phone,
     customer_name: e.customer_name !== undefined ? clean(e.customer_name, 80) : old.customer_name,
+    customer_send_at: e.customer_send_at !== undefined ? (e.customer_send_at ? toIso(e.customer_send_at) : null) : iso(old.customer_send_at),
     customer_note: e.customer_note !== undefined ? clean(e.customer_note, 2000) : old.customer_note,
     customer_auto: e.customer_auto !== undefined ? !!e.customer_auto : old.customer_auto !== 0,
   };
@@ -134,11 +135,11 @@ export async function updateEvent(id: number, e: any, author?: string | null) {
   if (next.end && next.end < next.start) throw new Error("结束时间不能早于开始时间");
   await sql`UPDATE events SET title = ${next.title}, start = ${next.start}, "end" = ${next.end}, all_day = ${next.all_day},
     notes = ${next.notes}, label = ${next.label}, member_id = ${next.member_id}, remind = ${next.remind},
-    customer_phone = ${next.customer_phone}, customer_note = ${next.customer_note}, customer_auto = ${next.customer_auto}, customer_name = ${next.customer_name} WHERE id = ${id}`;
+    customer_phone = ${next.customer_phone}, customer_note = ${next.customer_note}, customer_auto = ${next.customer_auto}, customer_name = ${next.customer_name}, customer_send_at = ${next.customer_send_at} WHERE id = ${id}`;
   // 变更纪录：「修改了标题、时间」
   const prev: any = { ...old, all_day: !!old.all_day, remind: !!old.remind, customer_auto: old.customer_auto !== 0 };
   // 电话、讯息或日期改了 → 之后会再发一次新的
-  if (next.customer_phone !== old.customer_phone || next.customer_note !== old.customer_note || next.start !== old.start || (next.customer_auto && !prev.customer_auto))
+  if (next.customer_phone !== old.customer_phone || next.customer_note !== old.customer_note || next.start !== old.start || next.customer_send_at !== iso(old.customer_send_at) || (next.customer_auto && !prev.customer_auto))
     await sql`UPDATE events SET customer_sent_at = NULL, customer_error = NULL WHERE id = ${id}`;
   const changed = [...new Set(Object.keys(next).filter((k) => (next[k] ?? null) !== (prev[k] ?? null)).map((k) => FIELD_CODES[k]))];
   if (changed.length) await logEvent(id, author, `updated:${changed.join(",")}`);
@@ -152,10 +153,12 @@ export async function deleteEvent(id: number) {
 // ---------- 给客户的 WhatsApp ----------
 /** 还没发、开着自动发送、未来 3 天内开始的行程 */
 export async function pendingCustomerMessages() {
-  return sql`SELECT id, start, customer_phone, customer_note FROM events
+  // 自己选的发送时间：到了（而且不超过 1 天前）就发；没选：行程在 3 天内（前一天下午 4 点发）
+  return sql`SELECT id, start, customer_phone, customer_note, customer_send_at FROM events
     WHERE customer_auto AND customer_sent_at IS NULL AND customer_error IS NULL
       AND COALESCE(customer_phone, '') <> '' AND COALESCE(customer_note, '') <> ''
-      AND start > NOW() AND start < NOW() + INTERVAL '3 days'`;
+      AND ((customer_send_at IS NOT NULL AND customer_send_at <= NOW() AND customer_send_at > NOW() - INTERVAL '1 day')
+        OR (customer_send_at IS NULL AND start > NOW() AND start < NOW() + INTERVAL '3 days'))`;
 }
 /** 抢占发送（避免重复发）；force = 手动「立即发送」 */
 export async function claimCustomerSend(id: number, force = false) {
