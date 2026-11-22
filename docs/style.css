@@ -637,3 +637,9 @@ button:active:not(:disabled), .item:active, .wk-item:active { transform: scale(.
 #view-settings .card h3 { font-weight: 800; }
 #view-settings .card h4 { font-weight: 800; padding-top: 10px; border-top: 1.5px solid var(--grid); }
 #view-settings input, #view-settings select, #view-settings textarea { border-width: 1.5px; border-color: var(--grid); }
+
+/* WhatsApp 自动化页签：只留 WhatsApp 部分 */
+.week-summary[hidden], .week-filters[hidden], .week-days[hidden] { display: none; }
+#view-week .week-wa { margin-top: 8px; }
+#weekWa { margin-bottom: 12px; }
+#waAuto { margin-bottom: 90px; }

@@ -1,5 +1,5 @@
 // ===================== Shared Calendar / 共享日历 =====================
-import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=42";
+import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=43";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -1428,6 +1428,7 @@ async function startApp() {
   state.labels = state.config.labels || {};
   state.labelNames = state.config.labelNames || {};
   $("#claudeTab").hidden = !state.config.claude; // 没有 API key 就不显示 Claude 页签
+  $("#waTab").hidden = !state.me?.can_whatsapp; // WhatsApp 自动化：只有可以发 WhatsApp 的人看得到
   state.view = "calendar"; // 登录后一定先看到日历
   rerenderAll();
   if (!started) {

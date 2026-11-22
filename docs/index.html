@@ -16,7 +16,7 @@
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
   <meta name="mobile-web-app-capable" content="yes" />
   <title>Shared Calendar</title>
-  <link rel="stylesheet" href="style.css?v=42" />
+  <link rel="stylesheet" href="style.css?v=43" />
 </head>
 <body class="locked">
   <!-- 登录 / 注册（打开 App 前） -->
@@ -90,9 +90,9 @@
         <div class="week-range" id="weekRange"></div>
         <button type="button" class="icon-btn" id="weekNext" aria-label="›">›</button>
       </div>
-      <div class="week-summary" id="weekSummary"></div>
-      <div class="week-filters" id="weekFilters"></div>
-      <div id="weekDays" class="week-days"></div>
+      <div class="week-summary" id="weekSummary" hidden></div>
+      <div class="week-filters" id="weekFilters" hidden></div>
+      <div id="weekDays" class="week-days" hidden></div>
       <div id="weekWa" class="week-wa" hidden></div>
 
       <!-- WhatsApp 自动化设定（管理员）：填好 → 看预览 → 保存 -->
@@ -261,7 +261,7 @@
   <nav class="tabbar">
     <button data-view="calendar" class="active"><span>📅</span><b data-i18n="tab_calendar"></b></button>
     <button data-view="members"><span>🎨</span><b data-i18n="tab_members"></b></button>
-    <button data-view="week"><span>📋</span><b data-i18n="tab_week"></b></button>
+    <button data-view="week" id="waTab" hidden><span>📲</span><b data-i18n="tab_week"></b></button>
     <button data-view="claude" id="claudeTab" hidden><span>💬</span><b data-i18n="tab_claude"></b></button>
     <button data-view="settings"><span>⚙️</span><b data-i18n="tab_settings"></b></button>
   </nav>
@@ -451,8 +451,8 @@
   </dialog>
 
   <div id="toast" class="toast" role="status"></div>
-  <script src="config.js?v=42"></script>
-  <script src="app.js?v=42" type="module"></script>
+  <script src="config.js?v=43"></script>
+  <script src="app.js?v=43" type="module"></script>
   <script>
     if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
   </script>
