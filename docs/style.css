@@ -681,3 +681,6 @@ button:active:not(:disabled), .item:active, .wk-item:active { transform: scale(.
 #waAuto { background: var(--surface); border-color: var(--border); }
 #waCard { background: #fdeef4; border-color: #f2c4d6; }
 #waCard h4 { border-top-color: #f2c4d6; }
+
+/* WhatsApp 自动化设定：浅紫色 */
+#waAuto { background: #f3efff; border-color: #d9cdf7; }
