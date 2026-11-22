@@ -81,10 +81,11 @@ export async function handleCallback(url: URL) {
   const link: Link = { user_id: userId, gmail, refresh_token: tok.refresh_token, calendar_id: old?.gmail === gmail ? old.calendar_id : "" };
   tokenCache.set(link.refresh_token, { token: tok.access_token, exp: Date.now() + (tok.expires_in ?? 3600) * 1000 });
   const lang = normLang((await db.getUser(userId))?.lang);
-  if (!link.calendar_id || !(await calendarExists(link))) link.calendar_id = await createCalendar(link, timezone, lang);
+  // 直接同步这个 Gmail 的主日历（日历 ID = Gmail），不另外建立新日历
+  if (!link.calendar_id || !(await calendarExists(link))) link.calendar_id = gmail;
   if (old?.gmail !== gmail || old?.calendar_id !== link.calendar_id) await db.clearEventGoogle(userId); // 新日历 → 全部重新同步
   await db.saveGoogleLink(link);
-  if (!old || old.calendar_id !== link.calendar_id) await db.switchGoogleCalendar(userId, link.calendar_id, desc(lang, "calendar"));
+  if (!old || old.calendar_id !== link.calendar_id) await db.switchGoogleCalendar(userId, link.calendar_id, link.calendar_id === gmail ? gmail : desc(lang, "calendar"));
   return link;
 }
 
