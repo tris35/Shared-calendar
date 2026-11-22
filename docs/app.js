@@ -1,5 +1,5 @@
 // ===================== Shared Calendar / 共享日历 =====================
-import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=19";
+import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=20";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -203,15 +203,18 @@ function openDayDialog() {
   $("#ddNum").classList.toggle("today", isToday);
   $("#ddTitle").textContent = sel.toLocaleDateString(locale(), { month: "long", year: "numeric" });
   const who = (e) => (e.member_name ? " · " + esc((e.member_emoji ? e.member_emoji + " " : "") + e.member_name) : "");
-  // 全天（或跨日、不是今天开始的）放在最上面
-  const allDay = evs.filter((e) => e.all_day || dayKey(new Date(e.start)) !== k);
+  // 上面一条：全天行程，和「整天都在进行中」的跨日行程（例如 19 日开始、21 日结束 → 20 日）
+  const startsToday = (e) => dayKey(new Date(e.start)) === k;
+  const endsToday = (e) => e.end && dayKey(new Date(e.end)) === k;
+  const allDay = evs.filter((e) => e.all_day || (!startsToday(e) && !endsToday(e)));
   const timed = evs.filter((e) => !allDay.includes(e)).sort((x, y) => new Date(x.start) - new Date(y.start));
+  const range = (e) => `${fmtDateTime(e.start)} → ${e.end ? fmtDateTime(e.end) : ""}`;
   $("#ddAllDay").innerHTML = allDay.map((e) => `<button type="button" class="dd-ev${e.color ? " lbl" : ""}" data-id="${e.id}" style="--c:${esc(eventColor(e))}">
-      <b>${esc(e.title)}</b><span>${esc(t("all_day"))}${who(e)}</span></button>`).join("");
+      <b>${esc(e.title)}</b><span>${esc(e.all_day ? t("all_day") : range(e))}${who(e)}</span></button>`).join("");
   // 时间轴：小时线 + 依时间摆放的行程（重叠的并排）
   const mins = (d) => d.getHours() * 60 + d.getMinutes();
   const items = timed.map((e) => {
-    const s0 = mins(new Date(e.start));
+    const s0 = startsToday(e) ? mins(new Date(e.start)) : 0; // 前几天开始的 → 从 12 AM 开始画
     const endD = e.end ? new Date(e.end) : null;
     const e0 = endD && dayKey(endD) === k ? Math.max(mins(endD), s0 + 20) : endD ? 24 * 60 : s0 + 60;
     return { e, s0, e0, col: 0, cols: 1 };
@@ -232,7 +235,7 @@ function openDayDialog() {
   }
   html += items.map(({ e, s0, e0, col, cols }) => `<button type="button" class="dd-ev dd-block${e.color ? " lbl" : ""}" data-id="${e.id}"
       style="--c:${esc(eventColor(e))};top:${(s0 / 60) * HOUR_PX}px;height:${Math.max(22, ((e0 - s0) / 60) * HOUR_PX - 2)}px;left:calc(${(col / cols) * 100}% + 2px);width:calc(${100 / cols}% - 4px)">
-      <b>${esc(e.title)}</b><span>${fmtTime(e.start)}${e.end ? " – " + fmtTime(e.end) : ""}${who(e)}</span></button>`).join("");
+      <b>${esc(e.title)}</b><span>${startsToday(e) && (!e.end || endsToday(e)) ? fmtTime(e.start) + (e.end ? " – " + fmtTime(e.end) : "") : esc(range(e))}${who(e)}</span></button>`).join("");
   if (isToday) html += `<div class="dd-now" style="top:${(mins(new Date()) / 60) * HOUR_PX}px"></div>`;
   $("#ddHours").innerHTML = `<div class="dd-grid" style="height:${24 * HOUR_PX}px"><div class="dd-events">${html}</div></div>`;
   if (!$("#dayDialog").open) $("#dayDialog").showModal();
