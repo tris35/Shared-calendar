@@ -1,10 +1,10 @@
 # 📅 Shared Calendar
 
-A shared calendar and booking app for a small studio, team or family — calendar, booking pipeline, payments, checklists, two-way Google Calendar sync and WhatsApp reminders to customers. Works in any browser and installs on a phone like an app (PWA). English · 简体中文 · 繁體中文 · Bahasa Melayu.
+A shared calendar app for a small studio, team or family — every account gets its own private calendar, invite links to edit together, checklists, two-way Google Calendar sync and WhatsApp reminders to customers. Works in any browser and installs on a phone like an app (PWA). English · 简体中文 · 繁體中文 · Bahasa Melayu.
 
 **Live app:** https://tris35.github.io/Shared-calendar/
 
-> 共享日历：给工作室、团队或家人用的行程与预约 App —— 日历、预约流程看板、付款追踪、清单、Google 日历双向同步、WhatsApp 自动提醒客户。手机可以「加到主画面」当 App 用。
+> 共享日历：给工作室、团队或家人用的行程 App —— 每个帐号自己的日历、邀请连结一起编辑、清单、Google 日历双向同步、WhatsApp 自动提醒客户、忘记密码寄验证码到 Gmail。手机可以「加到主画面」当 App 用。
 
 ---
 
@@ -13,21 +13,21 @@ A shared calendar and booking app for a small studio, team or family — calenda
 | Log in | 🏠 Today | 📅 Calendar |
 |:---:|:---:|:---:|
 | <img src="screenshots/0-login.png" width="240" alt="Log in"> | <img src="screenshots/1-today.png" width="240" alt="Today"> | <img src="screenshots/2-calendar.png" width="240" alt="Calendar"> |
-| **Day timeline** | **New event** | **📋 Board – Pipeline** |
-| <img src="screenshots/3-day.png" width="240" alt="Day timeline"> | <img src="screenshots/4-new-event.png" width="240" alt="New event"> | <img src="screenshots/5-board-pipeline.png" width="240" alt="Pipeline"> |
-| **💵 Board – Payments** | **📊 Board – Workload** | **🎨 Labels & people** |
-| <img src="screenshots/6-board-payments.png" width="240" alt="Payments"> | <img src="screenshots/7-board-workload.png" width="240" alt="Workload"> | <img src="screenshots/8-labels.png" width="240" alt="Labels"> |
-| **📲 WhatsApp Schedule** | **⚙️ Settings** | |
-| <img src="screenshots/9-whatsapp.png" width="240" alt="WhatsApp Schedule"> | <img src="screenshots/10-settings.png" width="240" alt="Settings"> | |
+| **Day timeline** | **New event** | **🎨 Labels & people** |
+| <img src="screenshots/3-day.png" width="240" alt="Day timeline"> | <img src="screenshots/4-new-event.png" width="240" alt="New event"> | <img src="screenshots/8-labels.png" width="240" alt="Labels"> |
+| **📲 WhatsApp Schedule** | **⚙️ Settings** | **🔗 Invite people** |
+| <img src="screenshots/9-whatsapp.png" width="240" alt="WhatsApp Schedule"> | <img src="screenshots/10-settings.png" width="240" alt="Settings"> | <img src="screenshots/11-invite.png" width="240" alt="Invite people"> |
+| **🔑 Forgot password** | | |
+| <img src="screenshots/12-forgot.png" width="240" alt="Forgot password"> | | |
 
 ---
 
 ## ✨ Features
 
 ### 🏠 Today (home screen)
-- Greeting, today's date, and counters: events **today**, **this week**, and **balance still owed**
-- **Next event** with a live countdown
-- Today's events as cards with checklist progress (✅ 3/5), money due (💰) and a **WhatsApp** button to chat with the customer
+- Greeting, today's date, and counters: **Today's Events** and **This Week's Events**
+- **Next Event** with a live countdown
+- Today's events as cards with checklist progress (✅ 3/5) and a **WhatsApp** button to chat with the customer
 
 ### 📅 Calendar
 - Month view; tap a day for a **day timeline** (all-day events on top, hour grid with event blocks, red "now" line)
@@ -35,14 +35,15 @@ A shared calendar and booking app for a small studio, team or family — calenda
 - Multi-day events, all-day events, 12-hour times (9:00 AM)
 - One-click date and time pickers; title emoji picker (📸 💍 ‼️ 💲 …)
 
-### 📋 Board
-- **Pipeline:** ❓ Enquiry → 📅 Booked → 📸 Shoot day → ✂️ Editing → ✅ Delivered — **drag cards** between columns (press-and-hold on phones)
-- **Payments:** monthly total / received / balance and a "still to collect" list
-- **Workload:** events per person per day as a heat-map
+### 📚 Own calendar + invite links
+- Every account gets its **own private calendar** — other sign-ups can't see your events
+- **Invite Link — Can Edit** or **— View Only**: copy it or share on WhatsApp; whoever opens it and logs in (or signs up) joins your calendar
+- The owner sees everyone in the calendar and can switch them between edit / view only, or remove them
+- The app always opens on **your own calendar**; switch to a calendar you joined from Today or Settings
 
 ### 📝 Events
 - Title, dates and times, person, colour label, notes, Google reminder
-- **Stage**, **payment** (total / paid / balance in RM) and **checklist**
+- **Checklist**
 - Comments and photos timeline; full change history ("Tris changed the time")
 - Edit by tapping the title, dates or details; red **DELETE** button (also deletes in Google)
 
@@ -63,7 +64,8 @@ A shared calendar and booking app for a small studio, team or family — calenda
 - Admins manage other admins, the monthly message limit and who may send WhatsApp
 
 ### ⚙️ Everything else
-- Accounts with Gmail + password; admins set by email
+- Accounts with Gmail + password (at least 6 characters with 1 special character); admins set by email
+- **Forgot password:** a 6-digit code is emailed from the app's Gmail — valid **5 minutes** (live countdown), "Send Code Again" unlocks after 20 seconds
 - Navy & gold theme (light), dark mode option, progress pop-ups ("Saving…" → "Saved")
 - Installable app with its own icon; fast, live refresh (every 10 s while open)
 
@@ -116,6 +118,7 @@ Backend URL: `https://<project>.supabase.co/functions/v1/api/...`
 | `APP_TIMEZONE` | Default `Asia/Kuala_Lumpur` |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Google Calendar sync (optional) |
 | `KAPSO_API_KEY` or `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID` | WhatsApp (optional); also `WHATSAPP_TEMPLATE`, `WHATSAPP_TEMPLATE_LANG`, `WHATSAPP_COUNTRY_CODE`, `WHATSAPP_API_VERSION` |
+| `GMAIL_USER`, `GMAIL_APP_PASSWORD` | Gmail that sends forgot-password codes (a Google **App Password**, needs 2-Step Verification) |
 | `ANTHROPIC_API_KEY` | Optional Claude assistant tab (hidden when not set) |
 
 ### Google Calendar sync
