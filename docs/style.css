@@ -647,3 +647,7 @@ button:active:not(:disabled), .item:active, .wk-item:active { transform: scale(.
 #waCard { margin: 0 16px 90px; border-width: 2px; border-color: var(--grid); }
 #waCard h4 { font-weight: 800; padding-top: 10px; border-top: 1.5px solid var(--grid); }
 #waAuto { margin-bottom: 12px; }
+
+/* WhatsApp Schedule 清单：浅黄色 */
+#weekWa { background: #fff8db; border-color: #f0dc8f; }
+#weekWa .ww-item + .ww-item { border-top-color: #f0dc8f; }
