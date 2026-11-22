@@ -1,5 +1,5 @@
 // ===================== Shared Calendar / 共享日历 =====================
-import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=58";
+import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=59";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -1189,18 +1189,37 @@ async function loadWaAuto() {
     $("#dgHour").value = String(d.hour ?? 8);
     $("#dgPhones").value = (d.phones || []).join(", ");
     $("#wtText").value = w.text || "";
-    updateWaPreview();
+    if (!$("#wpDate").value) $("#wpDate").value = dayKey(new Date());
+    loadPickEvents();
   } catch (e) { waAutoLoaded = false; $("#dgPreview").textContent = e.message; }
 }
 const waFlatten = (txt) => String(txt || "").replace(/\r/g, "").split("\n").map((l) => l.trim()).filter(Boolean).join(" | ");
+// 预览：选日期 → 列出那天的行程
+let waPickEvents = [];
+async function loadPickEvents() {
+  const v = $("#wpDate").value, sel = $("#wpEvent");
+  waPickEvents = [];
+  if (!v) { sel.innerHTML = `<option value="">${esc(t("wp_pick_date_first"))}</option>`; updateWaPreview(); return; }
+  const from = new Date(`${v}T00:00`), to = new Date(from); to.setDate(to.getDate() + 1);
+  try { waPickEvents = (await api(`/api/events?from=${encodeURIComponent(from.toISOString())}&to=${encodeURIComponent(to.toISOString())}`)).filter((e) => dayKey(new Date(e.start)) === v || e.all_day); } catch {}
+  sel.innerHTML = waPickEvents.length
+    ? waPickEvents.map((e) => `<option value="${e.id}">${esc((e.all_day ? t("all_day") : fmtTime(e.start)) + " · " + e.title)}</option>`).join("")
+    : `<option value="">${esc(t("wp_none"))}</option>`;
+  updateWaPreview();
+}
+$("#wpDate").addEventListener("change", loadPickEvents);
+$("#wpEvent").addEventListener("change", () => updateWaPreview());
 let waPrevTimer = null;
 function updateWaPreview() {
   // 给客户：就是这段文字（WhatsApp 会把换行变成「 | 」）
   // WhatsApp 商业讯息不能换行：空行拿掉，每一行用「 | 」接起来（和真正发出去的一样）
   // 预览：保留空行（客户 24 小时内传过讯息时就会这样收到）；下面再显示其他情况的样子
-  const raw = $("#wtText").value.replace(/\r/g, "").trim();
-  $("#wtPreview").textContent = raw ? `${t("wt_sample_title")}\n\n${raw}` : "—";
-  $("#wtPreview2").textContent = waFlatten(t("wt_sample_title") + "\n" + $("#wtText").value) || "—";
+  // 选了日期 + 行程 → 用那个行程的标题（和它自己的客户讯息，没有就用上面写的）
+  const ev = (waPickEvents || []).find((x) => String(x.id) === $("#wpEvent").value);
+  const title = ev ? ev.title : t("wt_sample_title");
+  const msg = (ev?.customer_note || $("#wtText").value).replace(/\r/g, "").trim();
+  $("#wtPreview").textContent = msg ? `${title}\n\n${msg}` : title;
+  $("#wtPreview2").textContent = waFlatten(title + "\n" + msg) || "—";
   // 给自己 / 员工的行程摘要：用目前选的「每天 / 每星期一」从伺服器算出来（还没保存）
   clearTimeout(waPrevTimer);
   waPrevTimer = setTimeout(async () => {
