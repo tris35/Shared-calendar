@@ -221,7 +221,6 @@ function renderDay() {
         <div class="t">${esc(e.title)}</div>
         <div class="s">${e.all_day ? esc(t("all_day")) : fmtTime(e.start) + (e.end ? " – " + fmtTime(e.end) : "")}${e.member_name ? " · " + esc((e.member_emoji ? e.member_emoji + " " : "") + e.member_name) : ""}${e.photo_count ? " · 📷" + e.photo_count : ""}${e.memo_count ? " · 💬" + e.memo_count : ""}</div>
       </div>
-      <button type="button" class="card-del" data-del="${e.id}" title="${esc(t("menu_delete"))}" aria-label="${esc(t("menu_delete"))}">${esc(t("delete"))}</button>
     </li>`).join("") : `<li class="empty">${esc(t("day_empty"))}</li>`;
 }
 $("#dayList").addEventListener("click", (ev) => {
