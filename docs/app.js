@@ -205,7 +205,7 @@ function renderDay() {
   $("#dayTitle").textContent = state.selected.toLocaleDateString(locale(), { month: "long", day: "numeric", weekday: "long" });
   const evs = eventsByDay()[k] || [];
   $("#dayList").innerHTML = evs.length ? evs.map((e) => `
-    <li class="item tinted" data-id="${e.id}" style="--c:${esc(eventColor(e))}">
+    <li class="item tinted${e.color ? " lbl" : ""}" data-id="${e.id}" style="--c:${esc(eventColor(e))}">
       <span class="bar" style="background:${esc(eventColor(e))}"></span>
       <div class="main">
         <div class="t">${esc(e.title)}</div>
@@ -866,7 +866,7 @@ async function renderWeek() {
     html += `<section class="wk-day${k === todayK ? " today" : ""}${d.getDay() === 0 ? " sun" : d.getDay() === 6 ? " sat" : ""}">
       <h4>${esc(d.toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "short" }))}</h4>
       ${list.length ? `<ul>${list.map((e) => `
-        <li class="wk-item tinted${e.done_at ? " done" : ""}" data-id="${e.id}" style="--c:${esc(eventColor(e))}">
+        <li class="wk-item tinted${e.color ? " lbl" : ""}${e.done_at ? " done" : ""}" data-id="${e.id}" style="--c:${esc(eventColor(e))}">
           <label class="wk-check"><input type="checkbox" data-done="${e.id}" ${e.done_at ? "checked" : ""} /><span></span></label>
           <span class="bar" style="background:${esc(eventColor(e))}"></span>
           <div class="wk-main"><div class="t">${esc(e.title)}</div>

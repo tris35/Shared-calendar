@@ -487,3 +487,7 @@ body.locked > .topbar, body.locked > main, body.locked > .tabbar { display: none
 .wk-item.tinted { background: color-mix(in srgb, var(--c) 45%, var(--surface)); border-radius: 10px; padding: 7px 10px; margin: 4px 0; border-top: 0 !important; }
 .wk-item.tinted .bar { width: 5px; background: color-mix(in srgb, var(--c) 75%, #1b2a44) !important; }
 .wk-item.tinted.done { background: var(--surface-2); }
+
+/* 有颜色标签的行程：卡片底色 = 标签颜色（和「标签」页的圆点一模一样） */
+.item.tinted.lbl, .wk-item.tinted.lbl:not(.done) { background: var(--c); border-color: color-mix(in srgb, var(--c) 75%, #1b2a44 25%); }
+.item.tinted.lbl .s, .wk-item.tinted.lbl .s { color: #3d4a63; }
