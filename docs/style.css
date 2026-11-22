@@ -576,3 +576,9 @@ button:active:not(:disabled), .item:active, .wk-item:active { transform: scale(.
 
 /* 登录画面的 Logo */
 .auth-logo-img { display: block; width: 96px; height: 96px; margin: 4px auto 6px; border-radius: 24px; box-shadow: 0 8px 24px rgba(80, 60, 160, .18); }
+
+/* 保存中：按钮变灰、有转圈 */
+.btn.busy { opacity: .75; cursor: progress; }
+.btn.busy::before { content: ""; display: inline-block; width: 12px; height: 12px; margin-right: 6px; vertical-align: -1px;
+  border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }

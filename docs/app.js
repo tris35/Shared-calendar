@@ -1,5 +1,5 @@
 // ===================== Shared Calendar / 共享日历 =====================
-import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=26";
+import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=27";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -747,8 +747,10 @@ $("#newMemberAdd").onclick = async () => {
 };
 $("#newMemberName").addEventListener("keydown", (ev) => { if (ev.key === "Enter" && !ev.isComposing) { ev.preventDefault(); $("#newMemberAdd").click(); } });
 
+let savingEvent = false;
 eventForm.addEventListener("submit", async (ev) => {
   ev.preventDefault();
+  if (savingEvent) return; // 已经在保存 → 不要再建立一次（避免重复）
   const f = eventForm;
   if (f.member_id.value === NEW_MEMBER) { toast(t("pick_member_first")); return; }
   readDateTime();
@@ -763,6 +765,9 @@ eventForm.addEventListener("submit", async (ev) => {
     customer_phone: f.customer_phone.value.trim() || null, customer_note: f.customer_note.value.trim() || null,
     customer_auto: f.customer_auto.checked,
   };
+  const saveBtn = eventForm.querySelector('button[type="submit"]');
+  const saveText = saveBtn.textContent;
+  savingEvent = true; saveBtn.disabled = true; saveBtn.textContent = t("saving"); saveBtn.classList.add("busy");
   try {
     const saved = editing
       ? await api(`/api/events/${editing.id}`, { method: "PATCH", body })
@@ -780,6 +785,7 @@ eventForm.addEventListener("submit", async (ev) => {
     toast(t("saved"));
     openDetail(saved.id);
   } catch (e) { toast(t("save_failed", { error: e.message })); }
+  finally { savingEvent = false; saveBtn.disabled = false; saveBtn.textContent = saveText; saveBtn.classList.remove("busy"); }
 });
 $("#cancelEventBtn").onclick = () => $("#eventDialog").close();
 
