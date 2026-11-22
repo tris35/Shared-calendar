@@ -8,17 +8,17 @@
   --accent: #4a7be0;      /* 按钮 / 今天：深一点的蓝，白字看得清楚 */
   --accent-text: #ffffff;
   --danger: #c4483b;
-  --today: #d6e6ff;
+  --today: #dbe8ff;
   --sun: #d0473a;
-  --sat: #6a55d0;
+  --sat: #3566b0;
   --shadow: 0 6px 24px rgba(30, 60, 120, .12);
   /* 月历格子 */
-  --cell: #f8fbff;        /* 平日：很浅的蓝 */
-  --cell-sun: #fde2ef;    /* 星期日：粉红 */
-  --cell-sat: #e9e0ff;    /* 星期六：薰衣草紫 */
-  --cell-other: #e9eef7;  /* 上/下个月 */
+  --cell: #f7faff;        /* 每一天：很浅的蓝（周末也一样，比较不乱） */
+  --cell-sun: #f7faff;
+  --cell-sat: #f7faff;
+  --cell-other: #edf2f9;  /* 上/下个月 */
   --grid: #9fb3d6;       /* 格子线：深一点，比较清楚 */
-  --head: linear-gradient(135deg, #d6e6ff 0%, #e9e0ff 55%, #fff3fb 100%);
+  --head: linear-gradient(180deg, #dce9ff 0%, #eaf2ff 100%);
   --weekdays: #e3edff;
 }
 @media (prefers-color-scheme: dark) {
