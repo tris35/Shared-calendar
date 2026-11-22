@@ -170,9 +170,10 @@ async function buildGoogleEvent(e: any, siteUrl: string, s: Settings, lang: Lang
   const timing = e.all_day
     ? (() => {
         const sd = dateOnly(e.start, tz), ed = e.end ? dateOnly(e.end, tz) : sd;
-        return { start: { date: sd }, end: { date: addDays(ed, 1) } }; // Google 全天活动的结束日不含当天
+        // 更新（PATCH）时要清掉另一种格式，否则「全天 ↔ 有时间」切换会同时有 date 和 dateTime → Google 400
+        return { start: { date: sd, dateTime: null, timeZone: null }, end: { date: addDays(ed, 1), dateTime: null, timeZone: null } }; // Google 全天活动的结束日不含当天
       })()
-    : { start: { dateTime: e.start, timeZone: tz }, end: { dateTime: e.end || new Date(new Date(e.start).getTime() + 3600_000).toISOString(), timeZone: tz } };
+    : { start: { dateTime: e.start, timeZone: tz, date: null }, end: { dateTime: e.end || new Date(new Date(e.start).getTime() + 3600_000).toISOString(), timeZone: tz, date: null } };
   const reminders: any = { useDefault: false, overrides: [] };
   if (e.remind) { // 前一天 12:00
     const minutes = e.all_day ? 12 * 60 : Math.round((new Date(e.start).getTime() - reminderAt(e.start, tz).getTime()) / 60000);
