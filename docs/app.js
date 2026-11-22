@@ -1,5 +1,5 @@
 // ===================== Shared Calendar / 共享日历 =====================
-import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=89";
+import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=90";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -31,6 +31,8 @@ function progressText(path, method, body) {
   if (path.startsWith("/api/auth/login")) return ["pg_login", "pg_login_ok"];
   if (path.startsWith("/api/auth/signup")) return ["pg_signup", "pg_signup_ok"];
   if (path.startsWith("/api/auth/logout")) return null;
+  if (path.startsWith("/api/auth/forgot")) return ["pg_code", "pg_code_ok"];   // 寄验证码
+  if (path.startsWith("/api/auth/reset")) return ["pg_reset", "pg_reset_ok"]; // 重设密码
   if (method === "DELETE") return ["pg_delete", "pg_delete_ok"];
   if (body instanceof FormData) return ["pg_upload", "pg_upload_ok"];
   if (path === "/api/events" && method === "POST") return ["pg_save", "pg_event_ok"];
