@@ -1,5 +1,5 @@
 // ===================== Shared Calendar / 共享日历 =====================
-import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=65";
+import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=66";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -655,11 +655,13 @@ function fillMemberSelect() {
   if (keep) eventForm.member_id.value = keep;
 }
 function renderLabelPicker(selected) {
-  const opts = [["", t("label_none"), "transparent"], ...orderedLabels().map(([id, l]) => [id, labelName(id), l.hex])];
+  // 和「标签」页一样的顺序；有取名字的显示名字，没有就空白
+  const opts = [["", t("label_none"), "transparent", true], ...orderedLabels().map(([id, l]) => [id, state.labelNames?.[id] || "", l.hex, false])];
   $("#labelPicker").setAttribute("aria-label", t("f_label"));
-  $("#labelPicker").innerHTML = opts.map(([id, name, hex]) => `
-    <button type="button" role="radio" aria-checked="${String(id) === String(selected ?? "")}" data-label="${id}" title="${esc(name)}" aria-label="${esc(name)}"
-      class="swatch ${id ? "" : "none"}" style="--c:${hex}">${id ? "" : esc(name)}</button>`).join("");
+  $("#labelPicker").innerHTML = opts.map(([id, name, hex, isNone]) => `
+    <button type="button" role="radio" aria-checked="${String(id) === String(selected ?? "")}" data-label="${id}" title="${esc(name || labelName(id) || "")}" aria-label="${esc(name || labelName(id) || "")}" class="lp-item">
+      <span class="swatch ${isNone ? "none" : ""}" style="--c:${hex}">${isNone ? "∅" : ""}</span>
+      <span class="lp-name">${esc(isNone ? name : name)}</span></button>`).join("");
 }
 $("#labelPicker").addEventListener("click", (ev) => {
   const b = ev.target.closest("[data-label]");

@@ -721,3 +721,16 @@ button:active:not(:disabled), .item:active, .wk-item:active { transform: scale(.
 
 /* WhatsApp Schedule：显示完整讯息 */
 .ww-note { display: block; -webkit-line-clamp: unset; overflow: visible; white-space: pre-wrap; line-height: 1.45; margin-top: 4px; }
+
+/* 行程表单：颜色标签 + 名字（和「标签」页一样；没名字就空白） */
+#labelPicker { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 8px 4px; }
+.lp-item { display: flex; flex-direction: column; align-items: center; gap: 4px; border: 0; background: none; padding: 2px; cursor: pointer; min-width: 0; }
+.lp-item .swatch { width: 34px; height: 34px; flex: none; pointer-events: none; display: grid; place-items: center; font-size: 14px; color: var(--muted); }
+.lp-item[aria-checked="true"] .swatch { outline: 3px solid var(--text); outline-offset: 2px; }
+.lp-name { font-size: 11.5px; font-weight: 700; color: var(--text); line-height: 1.2; min-height: 1.2em; max-width: 100%;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* 行程详情顶部：标题不会被 EDIT / DELETE 盖住 */
+.sheet-head { grid-template-columns: 44px minmax(0, 1fr) auto; gap: 6px; }
+.sheet-head h3 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+@media (max-width: 480px) { #detailDialog .sheet-head h3 { visibility: hidden; } }
