@@ -48,6 +48,7 @@ export async function handle(req: Request): Promise<Response> {
         const digest = await sendDigestIfDue().catch((e) => ({ error: String(e?.message || e) }));
         res = Response.json({ customers, digest });
       }
+      else if (seg[2] === "warm") res = Response.json({ ok: true }); // 每分钟叫醒一次，保存时不用等伺服器启动
       else res = new Response("not found", { status: 404 });
     } else if (seg[0] === "api") res = await handleApi(req);
     else res = Response.json({ ok: true, app: "shared-calendar" }); // 健康检查
