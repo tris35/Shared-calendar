@@ -191,6 +191,28 @@ function renderMonth() {
   $("#monthGrid").innerHTML = html;
   renderDay();
 }
+// 快速新增：在选中的那天输入标题就新增（全天）；「更多…」打开完整表单
+$("#quickAdd").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const title = $("#quickTitle").value.trim();
+  if (!title) { $("#quickTitle").focus(); return; }
+  const btn = $("#quickAdd button[type=submit]"); btn.disabled = true;
+  try {
+    const d = new Date(state.selected); d.setHours(0, 0, 0, 0);
+    await api("/api/events", { method: "POST", body: { title, all_day: true, start: d.toISOString(), end: null, remind: true } });
+    $("#quickTitle").value = "";
+    toast(t("qa_added"));
+    await loadMonth();
+  } catch (e) { toast(t("save_failed", { error: e.message })); }
+  btn.disabled = false;
+});
+$("#quickMore").onclick = () => {
+  const title = $("#quickTitle").value.trim();
+  openEditor(null, state.selected);
+  if (title) eventForm.title.value = title;
+  $("#quickTitle").value = "";
+};
+
 $("#monthGrid").addEventListener("click", (ev) => {
   const cell = ev.target.closest(".day");
   if (!cell) return;

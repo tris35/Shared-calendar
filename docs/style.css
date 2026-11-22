@@ -491,3 +491,11 @@ body.locked > .topbar, body.locked > main, body.locked > .tabbar { display: none
 /* 有颜色标签的行程：卡片底色 = 标签颜色（和「标签」页的圆点一模一样） */
 .item.tinted.lbl, .wk-item.tinted.lbl:not(.done) { background: var(--c); border-color: color-mix(in srgb, var(--c) 75%, #1b2a44 25%); }
 .item.tinted.lbl .s, .wk-item.tinted.lbl .s { color: #3d4a63; }
+
+/* 选中那天：快速新增 */
+.quick-add { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; padding: 6px 6px 6px 12px; background: var(--surface);
+  border: 1.5px dashed color-mix(in srgb, var(--accent) 45%, var(--border)); border-radius: 14px; }
+.quick-add:focus-within { border-style: solid; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent); }
+.qa-plus { color: var(--accent); font-weight: 800; font-size: 18px; }
+.quick-add input { flex: 1; min-width: 0; border: 0; background: none; padding: 8px 0; font-size: 15px; outline: none; }
+.quick-add .btn { flex: none; }
