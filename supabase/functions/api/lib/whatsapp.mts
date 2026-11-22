@@ -138,7 +138,7 @@ export async function buildDigest(mode: "daily" | "weekly", now = new Date()) {
   const to = plusDays(from, days);
   const events = await db.listEvents({ from: wallToUtc(from, 0, 0, timezone).toISOString(), to: wallToUtc(to, 0, 0, timezone).toISOString() });
   const label = (id: string | null) => (id ? labelNames[id] || db.LABELS[id]?.name : null);
-  const fmtT = (iso: string) => new Date(iso).toLocaleTimeString("en-GB", { timeZone: timezone, hour: "2-digit", minute: "2-digit" });
+  const fmtT = (iso: string) => new Date(iso).toLocaleTimeString("en-US", { timeZone: timezone, hour: "numeric", minute: "2-digit", hour12: true });
   const fmtD = (ymd: string) => new Date(`${ymd}T12:00:00Z`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
   const line = (e: any) => [e.done_at ? "✓" : "•", e.all_day ? "" : fmtT(e.start), e.title,
     e.member_name ? `(${[e.member_emoji, e.member_name].filter(Boolean).join(" ")})` : "", label(e.label) ? `[${label(e.label)}]` : ""]
