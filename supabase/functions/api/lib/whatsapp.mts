@@ -36,6 +36,17 @@ export function normPhone(raw: string, cc = "60") {
 }
 
 /** WhatsApp 模板的参数不能有换行 → 换行变成「 | 」 */
+/** 给客户的讯息 = 自己写的开头 + 这个行程的讯息 + 自己写的结尾（{title} {date} {time} 会换成行程资料） */
+export async function customerText(e: any, settings?: any) {
+  const s = settings || (await getSettings());
+  const tz = s.timezone;
+  const d = new Date(e.start);
+  const fill = (x: string) => String(x || "")
+    .replaceAll("{title}", e.title || "")
+    .replaceAll("{date}", d.toLocaleDateString("en-GB", { timeZone: tz, weekday: "short", day: "numeric", month: "short" }))
+    .replaceAll("{time}", e.all_day ? "" : d.toLocaleTimeString("en-US", { timeZone: tz, hour: "numeric", minute: "2-digit", hour12: true }));
+  return flattenNote([fill(s.waIntro || ""), e.customer_note || "", fill(s.waOutro || "")].filter((x) => x.trim()).join("\n"));
+}
 export function flattenNote(note: string) {
   return String(note || "").replace(/\r/g, "").split("\n").map((l) => l.trim()).filter(Boolean).join(" | ")
     .replace(/\t/g, " ").replace(/ {4,}/g, "   ").slice(0, 1000);
@@ -95,7 +106,7 @@ export async function sendCustomerMessage(eventId: number, opts: { force?: boole
   }
   if (!(await db.claimCustomerSend(eventId, !!opts.force))) return { skipped: true };
   try {
-    await sendTemplate(to, flattenNote(e.customer_note));
+    await sendTemplate(to, await customerText(e));
     await db.recordWaSent(eventId);
     await db.logEvent(eventId, opts.author ?? null, "customer_sent");
     return { ok: true };

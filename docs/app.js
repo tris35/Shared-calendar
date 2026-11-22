@@ -1,5 +1,5 @@
 // ===================== Shared Calendar / 共享日历 =====================
-import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=34";
+import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=35";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -956,7 +956,7 @@ async function renderSettings() {
     $("#waStatus").textContent = state.config?.whatsapp ? t("wa_ready") : t("wa_not_ready");
     $("#waNoAccess").hidden = !!me.can_whatsapp;
     $("#waAdmin").hidden = !me.admin;
-    if (me.admin) { loadWaUsers(); loadDigest(); loadAdmins(); }
+    if (me.admin) { loadWaUsers(); loadDigest(); loadAdmins(); loadWaText(); }
     loadWaUsage();
     if (document.activeElement !== $("#acctName")) $("#acctName").value = me.name;
     if (document.activeElement !== $("#tzInput")) $("#tzInput").value = set.timezone;
@@ -1116,6 +1116,17 @@ $("#weekDays").addEventListener("click", async (ev) => {
   const li = ev.target.closest(".wk-item");
   if (li) openDetail(Number(li.dataset.id));
 });
+
+// ---------- 给客户的讯息：自己写的开头 / 结尾 ----------
+async function loadWaText() {
+  try { const w = await api("/api/admin/wa-text"); $("#wtIntro").value = w.intro; $("#wtOutro").value = w.outro; } catch {}
+}
+$("#wtSave").onclick = async () => {
+  try {
+    const r = await api("/api/admin/wa-text", { method: "PUT", body: { intro: $("#wtIntro").value, outro: $("#wtOutro").value } });
+    $("#wtPreview").textContent = (r.preview || "").split(" | ").join("\n");
+  } catch (e) { toast(t("save_failed", { error: e.message })); }
+};
 
 // ---------- 管理员名单（管理员可以加别的 Gmail 当管理员） ----------
 async function loadAdmins() {

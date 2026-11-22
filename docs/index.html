@@ -16,7 +16,7 @@
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
   <meta name="mobile-web-app-capable" content="yes" />
   <title>Shared Calendar</title>
-  <link rel="stylesheet" href="style.css?v=34" />
+  <link rel="stylesheet" href="style.css?v=35" />
 </head>
 <body class="locked">
   <!-- 登录 / 注册（打开 App 前） -->
@@ -197,6 +197,15 @@
           <p id="waUsage" class="hint wa-usage" style="padding:0"></p>
           <p id="waNoAccess" class="hint warn" style="padding:0" data-i18n="wa_no_access" hidden></p>
           <div id="waAdmin" hidden>
+            <h4 data-i18n="wt_title"></h4>
+            <p class="hint" style="padding:0" data-i18n="wt_hint"></p>
+            <div class="digest-form">
+              <label><span data-i18n="wt_intro"></span><textarea id="wtIntro" rows="2" maxlength="300" data-i18n-placeholder="wt_intro_ph"></textarea></label>
+              <label><span data-i18n="wt_outro"></span><textarea id="wtOutro" rows="2" maxlength="300" data-i18n-placeholder="wt_outro_ph"></textarea></label>
+              <button type="button" class="btn primary small" id="wtSave" data-i18n="save"></button>
+              <p class="hint" style="padding:0"><b data-i18n="dg_preview"></b></p>
+              <pre id="wtPreview" class="digest-preview"></pre>
+            </div>
             <h4 data-i18n="adm_title"></h4>
             <p class="hint" style="padding:0" data-i18n="adm_hint"></p>
             <p class="hint" style="padding:0" id="admFixed"></p>
@@ -439,8 +448,8 @@
   </dialog>
 
   <div id="toast" class="toast" role="status"></div>
-  <script src="config.js?v=34"></script>
-  <script src="app.js?v=34" type="module"></script>
+  <script src="config.js?v=35"></script>
+  <script src="app.js?v=35" type="module"></script>
   <script>
     if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
   </script>

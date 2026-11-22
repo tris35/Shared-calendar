@@ -13,6 +13,8 @@ export type Settings = {
   cronUrl?: string;            // 排程要呼叫的网址（这个函数自己的网址，自动记下）
   labelNames?: Record<string, string>; // 颜色标签的自订名称（例如 番茄红 = 拍摄），所有人共用
   digest?: Digest;             // WhatsApp 行程摘要（每天 / 每周）
+  waIntro?: string;            // 给客户的讯息：自己写的开头（可用 {title} {date} {time}）
+  waOutro?: string;            // 给客户的讯息：自己写的结尾
   adminEmails?: string[];      // 在 App「设置」加的管理员（另外还有 Supabase 密钥 ADMIN_EMAILS）
 };
 
