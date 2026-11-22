@@ -1,5 +1,5 @@
 // ===================== Shared Calendar / 共享日历 =====================
-import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=68";
+import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=69";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -921,7 +921,6 @@ $("#emojiCustom").addEventListener("input", () => {
 
 async function renderMembers() {
   renderLabels();
-  renderTemplates();
   state.members = await api("/api/members");
   $("#memberList").innerHTML = state.members.length ? state.members.map((m) => `
     <li class="item" data-id="${m.id}">${avatar(m.name)}<div class="main"><div class="t">${esc(m.name)}</div></div></li>`).join("")

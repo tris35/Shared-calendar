@@ -16,7 +16,7 @@
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
   <meta name="mobile-web-app-capable" content="yes" />
   <title>Shared Calendar</title>
-  <link rel="stylesheet" href="style.css?v=68" />
+  <link rel="stylesheet" href="style.css?v=69" />
 </head>
 <body class="locked">
   <!-- 登录 / 注册（打开 App 前） -->
@@ -113,10 +113,7 @@
       </div>
       <ul id="memberList" class="list pad"></ul>
 
-      <h3 class="section-title" data-i18n="tp_title"></h3>
-      <p class="hint" data-i18n="tp_hint"></p>
-      <div id="tplList" class="tpl-list"></div>
-      <div class="toolbar"><span class="spacer"></span><button class="btn primary" id="tplAdd" data-i18n="tp_add"></button></div>
+      <div hidden><div id="tplList"></div><button id="tplAdd"></button></div>
     </section>
 
     <!-- 这星期：摘要 + 任务清单 -->
@@ -396,7 +393,7 @@
         <div class="bar2"><span id="dCheckBar"></span></div>
         <ul id="dCheckList" class="cklist"></ul>
         <div class="ck-add"><input id="dCheckInput" maxlength="200" data-i18n-placeholder="c_add_ph" /><button type="button" class="btn small" id="dCheckAddBtn" data-i18n="qa_add"></button>
-          <select id="dCheckTpl"></select></div>
+          <select id="dCheckTpl" hidden></select></div>
       </div>
       <div id="feed" class="feed"></div>
     </div>
@@ -533,8 +530,8 @@
   </dialog>
 
   <div id="toast" class="toast" role="status"></div>
-  <script src="config.js?v=68"></script>
-  <script src="app.js?v=68" type="module"></script>
+  <script src="config.js?v=69"></script>
+  <script src="app.js?v=69" type="module"></script>
   <script>
     if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
   </script>

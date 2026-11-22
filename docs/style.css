@@ -825,3 +825,6 @@ button:active:not(:disabled), .item:active, .wk-item:active { transform: scale(.
 .wl table { min-width: 0; table-layout: fixed; border-spacing: 2px; }
 .wl th.who { width: 74px; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
 .wl td { height: 30px; font-size: 12px; }
+
+#dCheckTpl[hidden] { display: none; }
+.ck-add input { flex: 1 1 auto; }
