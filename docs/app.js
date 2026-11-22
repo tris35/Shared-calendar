@@ -1,5 +1,5 @@
 // ===================== Shared Calendar / 共享日历 =====================
-import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=88";
+import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=89";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -1523,7 +1523,7 @@ function fpCountdown() { // 验证码 5 分钟倒数；过期就不能按「重�
   draw(); fpTick = setInterval(draw, 1000);
 }
 function showForgot(on) {
-  if (!on) clearInterval(fpTick);
+  if (!on) { clearInterval(fpTick); clearInterval(fpWaitTick); $("#fpSend").disabled = false; $("#fpSend").textContent = t("fp_send"); }
   $("#authForm").hidden = on; $("#forgotForm").hidden = !on;
   document.querySelector(".auth-tabs").hidden = on; document.querySelector(".auth-foot").hidden = on;
   $("#fpError").textContent = "";
@@ -1541,10 +1541,24 @@ $("#fpSend").onclick = async () => {
     $("#fpHint").textContent = t("fp_sent", { email });
     $("#fpStep2").hidden = false; $("#fpSend").textContent = t("fp_resend");
     $("#fpCode").value = ""; fpUntil = Date.now() + 5 * 60 * 1000; fpCountdown();
+    fpResendWait();
     setTimeout(() => $("#fpCode").focus(), 50);
+    return;
   } catch (e) { err.textContent = e.message; }
-  setTimeout(() => { b.disabled = false; }, 3000);
+  b.disabled = false;
 };
+// 「再寄一次」要等 20 秒才可以按
+let fpWaitTick = null;
+function fpResendWait() {
+  clearInterval(fpWaitTick);
+  const b = $("#fpSend"), until = Date.now() + 20000;
+  const draw = () => {
+    const left = Math.ceil((until - Date.now()) / 1000);
+    if (left > 0) { b.disabled = true; b.textContent = t("fp_resend_in", { n: left }); }
+    else { clearInterval(fpWaitTick); b.disabled = false; b.textContent = t("fp_resend"); }
+  };
+  draw(); fpWaitTick = setInterval(draw, 250);
+}
 $("#forgotForm").addEventListener("submit", async (ev) => {
   ev.preventDefault();
   const email = $("#fpEmail").value.trim(), code = $("#fpCode").value.replace(/\D/g, ""), password = $("#fpPassword").value, err = $("#fpError");

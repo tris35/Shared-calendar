@@ -85,7 +85,7 @@ export async function forgotPassword(body: any, lang: string) {
   const email = normalizeEmail(body.email);
   if (!EMAIL_RE.test(email)) throw new AuthError("请输入正确的 Gmail 地址", 400);
   const old = await db.getReset(email);
-  if (old && Number(old.age) < 60) throw new AuthError("请等 1 分钟再要求新的验证码", 429);
+  if (old && Number(old.age) < 20) throw new AuthError("请等 20 秒再要求新的验证码", 429);
   const user = await db.getUserByEmail(email);
   if (!user) { await delay(600); return { ok: true }; }
   const code = String(crypto.randomInt(0, 1000000)).padStart(6, "0");

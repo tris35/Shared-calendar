@@ -880,3 +880,4 @@ body.viewer #detailMenuBtn, body.viewer #deleteEventBtn, body.viewer #editEventB
 .fp-timer { margin: 8px 0 0; font-size: 14px; font-weight: 700; color: var(--accent); }
 .fp-timer.expired { color: #d64545; }
 #forgotForm #fpReset:disabled { opacity: .5; }
+#forgotForm .fp-send:disabled { opacity: .6; cursor: not-allowed; }

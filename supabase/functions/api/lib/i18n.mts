@@ -14,7 +14,7 @@ const T: [RegExp, Record<Exclude<Lang, "zh">, string>][] = [
   [/^这个 Gmail 已经注册过了，请直接登录$/, { en: "This Gmail is already registered. Please log in.", "zh-TW": "這個 Gmail 已經註冊過了，請直接登入", ms: "Gmail ini sudah didaftarkan. Sila log masuk." }],
   [/^忘记密码功能还没设定好，请联络管理员$/, { en: "Forgot password isn't set up yet — please contact the admin", "zh-TW": "忘記密碼功能還沒設定好，請聯絡管理員", ms: "Lupa kata laluan belum disediakan — sila hubungi pentadbir" }],
   [/^寄信失败，请稍后再试$/, { en: "Couldn't send the email — please try again later", "zh-TW": "寄信失敗，請稍後再試", ms: "Gagal menghantar e-mel — sila cuba lagi nanti" }],
-  [/^请等 1 分钟再要求新的验证码$/, { en: "Please wait 1 minute before asking for a new code", "zh-TW": "請等 1 分鐘再要求新的驗證碼", ms: "Sila tunggu 1 minit sebelum meminta kod baharu" }],
+  [/^请等 20 秒再要求新的验证码$/, { en: "Please wait 20 seconds before asking for a new code", "zh-TW": "請等 20 秒再要求新的驗證碼", ms: "Sila tunggu 20 saat sebelum meminta kod baharu" }],
   [/^验证码不正确或已过期$/, { en: "The code is wrong or has expired", "zh-TW": "驗證碼不正確或已過期", ms: "Kod salah atau telah tamat tempoh" }],
   [/^Gmail 或密码不正确$/, { en: "Incorrect Gmail or password", "zh-TW": "Gmail 或密碼不正確", ms: "Gmail atau kata laluan salah" }],
   [/^请先登录$/, { en: "Please log in first", "zh-TW": "請先登入", ms: "Sila log masuk dahulu" }],
