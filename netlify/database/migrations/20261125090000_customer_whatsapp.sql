@@ -1,0 +1,6 @@
+-- 给客户的 WhatsApp 讯息：行程前一天下午 4 点自动发送
+ALTER TABLE events ADD COLUMN IF NOT EXISTS customer_phone TEXT;
+ALTER TABLE events ADD COLUMN IF NOT EXISTS customer_note TEXT;
+ALTER TABLE events ADD COLUMN IF NOT EXISTS customer_auto BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE events ADD COLUMN IF NOT EXISTS customer_sent_at TIMESTAMPTZ;
+ALTER TABLE events ADD COLUMN IF NOT EXISTS customer_error TEXT;
