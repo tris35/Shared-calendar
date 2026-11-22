@@ -561,7 +561,7 @@ export async function getReset(email: string) {
   return (await sql`SELECT *, extract(epoch FROM now() - sent_at) AS age FROM password_resets WHERE email = ${email}`)[0];
 }
 export async function saveReset(email: string, codeHash: string) {
-  await sql`INSERT INTO password_resets (email, code_hash, expires_at, attempts, sent_at) VALUES (${email}, ${codeHash}, now() + interval '15 minutes', 0, now())
+  await sql`INSERT INTO password_resets (email, code_hash, expires_at, attempts, sent_at) VALUES (${email}, ${codeHash}, now() + interval '5 minutes', 0, now())
     ON CONFLICT (email) DO UPDATE SET code_hash = EXCLUDED.code_hash, expires_at = EXCLUDED.expires_at, attempts = 0, sent_at = now()`;
 }
 export async function bumpResetAttempts(email: string) {

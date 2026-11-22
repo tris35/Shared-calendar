@@ -61,10 +61,10 @@ export async function signup(body: any) {
 // ---------- 忘记密码：寄 6 位数验证码到 Gmail（用 Brevo 寄信） ----------
 const codeHash = (email: string, code: string) => crypto.createHash("sha256").update(`${email}:${code}:${env("BREVO_API_KEY") || ""}`).digest("hex");
 const RESET_TEXT: Record<string, { subject: string; body: (c: string) => string }> = {
-  en: { subject: "Your password reset code", body: (c) => `Your code to reset your Shared Calendar password is:\n\n${c}\n\nIt expires in 15 minutes. If you didn't ask for this, you can ignore this email.` },
-  zh: { subject: "重设密码验证码", body: (c) => `你的共享日历重设密码验证码：\n\n${c}\n\n15 分钟内有效。如果不是你要求的，可以不理会这封信。` },
-  "zh-TW": { subject: "重設密碼驗證碼", body: (c) => `你的共享日曆重設密碼驗證碼：\n\n${c}\n\n15 分鐘內有效。如果不是你要求的，可以不理會這封信。` },
-  ms: { subject: "Kod set semula kata laluan", body: (c) => `Kod untuk set semula kata laluan Shared Calendar anda:\n\n${c}\n\nSah selama 15 minit. Jika anda tidak memintanya, abaikan e-mel ini.` },
+  en: { subject: "Your password reset code", body: (c) => `Your code to reset your Shared Calendar password is:\n\n${c}\n\nIt expires in 5 minutes. If you didn't ask for this, you can ignore this email.` },
+  zh: { subject: "重设密码验证码", body: (c) => `你的共享日历重设密码验证码：\n\n${c}\n\n5 分钟内有效。如果不是你要求的，可以不理会这封信。` },
+  "zh-TW": { subject: "重設密碼驗證碼", body: (c) => `你的共享日曆重設密碼驗證碼：\n\n${c}\n\n5 分鐘內有效。如果不是你要求的，可以不理會這封信。` },
+  ms: { subject: "Kod set semula kata laluan", body: (c) => `Kod untuk set semula kata laluan Shared Calendar anda:\n\n${c}\n\nSah selama 5 minit. Jika anda tidak memintanya, abaikan e-mel ini.` },
 };
 async function sendResetMail(to: string, code: string, lang: string) {
   const key = (env("BREVO_API_KEY") || "").replace(/\s+/g, ""); // 去掉复制时多出的空白 / 换行
