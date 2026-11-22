@@ -46,7 +46,8 @@ export async function customerText(e: any, settings?: any) {
     .replaceAll("{title}", e.title || "")
     .replaceAll("{date}", d.toLocaleDateString("en-GB", { timeZone: tz, weekday: "short", day: "numeric", month: "short" }))
     .replaceAll("{time}", e.all_day ? "" : d.toLocaleTimeString("en-US", { timeZone: tz, hour: "numeric", minute: "2-digit", hour12: true }));
-  return flattenNote([e.title || "", fill(e.customer_note || "")].filter((x) => x.trim()).join("\n")); // 发出去的 = 行程标题 + 行程里写的讯息
+  const title = e.title ? `*${String(e.title).trim().replace(/\*/g, "")}*` : ""; // 标题粗体
+  return flattenNote([title, fill(e.customer_note || "")].filter((x) => x.trim()).join("\n")); // 发出去的 = 行程标题 + 行程里写的讯息
 }
 export function flattenNote(note: string) {
   return String(note || "").replace(/\r/g, "").split("\n").map((l) => l.trim()).filter(Boolean).join(" | ")
@@ -85,7 +86,8 @@ async function sendPlainText(to: string, text: string) {
 }
 /** 给客户：先试普通文字（有空行），不行（超过 24 小时）就用核准的模板（一行，用 | 分开） */
 async function sendCustomerText(to: string, e: any) {
-  const full = [e.title || "", String(e.customer_note || "").replace(/\r/g, "")].filter((x) => x.trim()).join("\n\n");
+  const bold = (x: string) => (x.trim() ? `*${x.trim().replace(/\*/g, "")}*` : ""); // WhatsApp：*文字* = 粗体
+  const full = [bold(e.title || ""), String(e.customer_note || "").replace(/\r/g, "")].filter((x) => x.trim()).join("\n\n");
   try { return await sendPlainText(to, full); }
   catch { return await sendTemplate(to, await customerText(e)); }
 }

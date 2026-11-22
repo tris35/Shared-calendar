@@ -1,5 +1,5 @@
 // ===================== Shared Calendar / 共享日历 =====================
-import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=60";
+import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=61";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -1218,7 +1218,7 @@ function updateWaPreview() {
   const ev = (waPickEvents || []).find((x) => String(x.id) === $("#wpEvent").value);
   const title = ev ? ev.title : t("wt_sample_title");
   const msg = (ev?.customer_note || $("#wtText").value).replace(/\r/g, "").trim();
-  $("#wtPreview").textContent = msg ? `${title}\n\n${msg}` : title;
+  $("#wtPreview").innerHTML = `<b>${esc(title)}</b>` + (msg ? `\n\n${esc(msg)}` : ""); // 标题粗体（和 WhatsApp 一样）
   $("#wtPreview2").textContent = waFlatten(title + "\n" + msg) || "—";
   // 给自己 / 员工的行程摘要：用目前选的「每天 / 每星期一」从伺服器算出来（还没保存）
   clearTimeout(waPrevTimer);
