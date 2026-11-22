@@ -16,7 +16,7 @@
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
   <meta name="mobile-web-app-capable" content="yes" />
   <title>Shared Calendar</title>
-  <link rel="stylesheet" href="style.css?v=87" />
+  <link rel="stylesheet" href="style.css?v=88" />
 </head>
 <body class="locked">
   <!-- 登录 / 注册（打开 App 前） -->
@@ -53,8 +53,9 @@
         <label><span data-i18n="f_gmail">Gmail</span><input id="fpEmail" type="email" inputmode="email" autocomplete="email" placeholder="yourname@gmail.com" /></label>
         <button type="button" class="btn small fp-send" id="fpSend" data-i18n="fp_send"></button>
         <div id="fpStep2" hidden>
-          <label><span data-i18n="fp_code"></span><input id="fpCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" class="fp-code" /></label>
-          <label><span data-i18n="fp_new_pw"></span><input id="fpPassword" type="password" autocomplete="new-password" /></label>
+          <label><span><span data-i18n="fp_code"></span> <b class="req">*</b></span><input id="fpCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" class="fp-code" required /></label>
+          <p id="fpTimer" class="fp-timer"></p>
+          <label><span><span data-i18n="fp_new_pw"></span> <b class="req">*</b></span><input id="fpPassword" type="password" autocomplete="new-password" required /></label>
           <p class="pw-rule" data-i18n="pw_rule"></p>
           <button type="submit" class="btn primary auth-submit" id="fpReset" data-i18n="fp_reset"></button>
         </div>
@@ -569,8 +570,8 @@
   </dialog>
 
   <div id="toast" class="toast" role="status"></div>
-  <script src="config.js?v=87"></script>
-  <script src="app.js?v=87" type="module"></script>
+  <script src="config.js?v=88"></script>
+  <script src="app.js?v=88" type="module"></script>
   <script>
     if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
   </script>

@@ -1,5 +1,5 @@
 // ===================== Shared Calendar / 共享日历 =====================
-import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=87";
+import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=88";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -1511,7 +1511,19 @@ $("#authForm").addEventListener("submit", async (ev) => {
 });
 
 // ---------- 忘记密码 ----------
+let fpTick = null, fpUntil = 0;
+function fpCountdown() { // 验证码 5 分钟倒数；过期就不能按「重设」
+  clearInterval(fpTick);
+  const draw = () => {
+    const left = Math.max(0, Math.round((fpUntil - Date.now()) / 1000));
+    const el = $("#fpTimer");
+    if (left > 0) { el.textContent = t("fp_timer", { t: `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}` }); el.className = "fp-timer"; $("#fpReset").disabled = false; }
+    else { el.textContent = t("fp_expired"); el.className = "fp-timer expired"; $("#fpReset").disabled = true; clearInterval(fpTick); }
+  };
+  draw(); fpTick = setInterval(draw, 1000);
+}
 function showForgot(on) {
+  if (!on) clearInterval(fpTick);
   $("#authForm").hidden = on; $("#forgotForm").hidden = !on;
   document.querySelector(".auth-tabs").hidden = on; document.querySelector(".auth-foot").hidden = on;
   $("#fpError").textContent = "";
@@ -1528,6 +1540,7 @@ $("#fpSend").onclick = async () => {
     await api("/api/auth/forgot", { method: "POST", body: { email } });
     $("#fpHint").textContent = t("fp_sent", { email });
     $("#fpStep2").hidden = false; $("#fpSend").textContent = t("fp_resend");
+    $("#fpCode").value = ""; fpUntil = Date.now() + 5 * 60 * 1000; fpCountdown();
     setTimeout(() => $("#fpCode").focus(), 50);
   } catch (e) { err.textContent = e.message; }
   setTimeout(() => { b.disabled = false; }, 3000);
@@ -1536,8 +1549,10 @@ $("#forgotForm").addEventListener("submit", async (ev) => {
   ev.preventDefault();
   const email = $("#fpEmail").value.trim(), code = $("#fpCode").value.replace(/\D/g, ""), password = $("#fpPassword").value, err = $("#fpError");
   err.textContent = "";
-  if (code.length !== 6) { err.textContent = t("fp_code_err"); return; }
-  if (!passwordOk(password)) { err.textContent = t("err_pw_rule"); return; }
+  if (Date.now() > fpUntil) { err.textContent = t("fp_expired"); return; }
+  if (code.length !== 6) { err.textContent = t("fp_code_err"); $("#fpCode").focus(); return; }
+  if (!password) { err.textContent = t("fp_pw_req"); $("#fpPassword").focus(); return; }
+  if (!passwordOk(password)) { err.textContent = t("err_pw_rule"); $("#fpPassword").focus(); return; }
   const b = $("#fpReset"); b.disabled = true;
   try {
     const r = await api("/api/auth/reset", { method: "POST", body: { email, code, password } });

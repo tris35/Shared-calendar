@@ -876,3 +876,7 @@ body.viewer #detailMenuBtn, body.viewer #deleteEventBtn, body.viewer #editEventB
 #forgotForm #fpReset { width: 100%; margin-top: 22px; }
 #forgotForm .auth-error { margin-top: 12px; }
 #forgotForm .forgot-link { margin-top: 18px; }
+.req { color: #d64545; }
+.fp-timer { margin: 8px 0 0; font-size: 14px; font-weight: 700; color: var(--accent); }
+.fp-timer.expired { color: #d64545; }
+#forgotForm #fpReset:disabled { opacity: .5; }
