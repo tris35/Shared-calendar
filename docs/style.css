@@ -513,3 +513,11 @@ body.locked > .topbar, body.locked > main, body.locked > .tabbar { display: none
 .day-new span { font-size: 20px; font-weight: 800; line-height: 1; }
 .day-new:hover, .day-new:focus-visible { background: color-mix(in srgb, var(--accent) 8%, var(--surface)); border-style: solid; }
 .day-panel { scroll-margin-top: 8px; }
+
+/* 点日期跳出的视窗 */
+.day-dialog { width: min(460px, calc(100vw - 24px)); max-height: min(80dvh, 640px); border: 0; border-radius: 18px; padding: 14px 16px 16px;
+  background: var(--bg); color: var(--text); box-shadow: 0 20px 60px rgba(10, 20, 45, .35); overflow-y: auto; }
+.day-dialog::backdrop { background: rgba(15, 25, 50, .45); }
+.dd-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.dd-head h3 { margin: 0; font-size: 17px; color: var(--accent); }
+.day-dialog .list { margin: 0; padding: 0; }

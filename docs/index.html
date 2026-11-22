@@ -251,6 +251,16 @@
   </nav>
 
   <!-- 行程详情：资料 + 时间线（留言、照片、修改纪录） -->
+  <!-- 点日期：那天的行程 + 「新增」按钮 -->
+  <dialog id="dayDialog" class="day-dialog">
+    <div class="dd-head">
+      <h3 id="ddTitle"></h3>
+      <button type="button" class="icon-btn" id="ddClose" data-i18n-aria="close">✕</button>
+    </div>
+    <button type="button" id="ddNew" class="day-new"><span>＋</span> <b data-i18n="new_event"></b></button>
+    <ul id="ddList" class="list"></ul>
+  </dialog>
+
   <dialog id="detailDialog" class="sheet">
     <div class="sheet-head">
       <button type="button" class="icon-btn" id="detailClose" data-i18n-aria="close">✕</button>

@@ -191,6 +191,27 @@ function renderMonth() {
   $("#monthGrid").innerHTML = html;
   renderDay();
 }
+// 点日期跳出的视窗：那天的行程清单
+function openDayDialog() {
+  const k = dayKey(state.selected);
+  const evs = eventsByDay()[k] || [];
+  $("#ddTitle").textContent = state.selected.toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "long" });
+  $("#ddList").innerHTML = evs.length ? evs.map((e) => `
+    <li class="item tinted${e.color ? " lbl" : ""}" data-id="${e.id}" style="--c:${esc(eventColor(e))}">
+      <span class="bar" style="background:${esc(eventColor(e))}"></span>
+      <div class="main"><div class="t">${esc(e.title)}</div>
+        <div class="s">${e.all_day ? esc(t("all_day")) : fmtTime(e.start) + (e.end ? " – " + fmtTime(e.end) : "")}${e.member_name ? " · " + esc((e.member_emoji ? e.member_emoji + " " : "") + e.member_name) : ""}${e.label ? " · " + esc(labelName(e.label)) : ""}</div></div>
+    </li>`).join("") : `<li class="empty">${esc(t("day_empty"))}</li>`;
+  if (!$("#dayDialog").open) $("#dayDialog").showModal();
+}
+$("#ddClose").onclick = () => $("#dayDialog").close();
+$("#dayDialog").addEventListener("click", (ev) => { if (ev.target === $("#dayDialog")) $("#dayDialog").close(); }); // 点外面关闭
+$("#ddNew").onclick = () => { $("#dayDialog").close(); openEditor(null, state.selected); };
+$("#ddList").addEventListener("click", (ev) => {
+  const li = ev.target.closest(".item");
+  if (li) { $("#dayDialog").close(); openDetail(Number(li.dataset.id)); }
+});
+
 // 选中那天上面的按钮：新增这天的行程
 $("#dayNewBtn").onclick = () => openEditor(null, state.selected);
 
@@ -201,13 +222,10 @@ $("#monthGrid").addEventListener("click", (ev) => {
   const picked = new Date(y, m - 1, d);
   const same = dayKey(picked) === dayKey(state.selected);
   state.selected = picked;
-  // 点日期只显示那天的行程（不会直接打开新增），手机上自动卷到下面的清单
-  setTimeout(() => { // 只有清单在画面外时才卷动
-    const top = $(".day-panel").getBoundingClientRect().top;
-    if (top > window.innerHeight - 140) $(".day-panel").scrollIntoView({ behavior: "smooth", block: "start" });
-  }, 50);
+  // 点日期：跳出那天的行程（上面有「新增行程」按钮）
+  openDayDialog();
   if (same) return;
-  if (picked.getMonth() !== state.month.getMonth()) { state.month = new Date(y, m - 1, 1); loadMonth(); } else renderMonth();
+  if (picked.getMonth() !== state.month.getMonth()) { state.month = new Date(y, m - 1, 1); loadMonth().then(openDayDialog); } else renderMonth();
 });
 function renderDay() {
   const k = dayKey(state.selected);
