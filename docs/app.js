@@ -1,5 +1,5 @@
 // ===================== Shared Calendar / 共享日历 =====================
-import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=29";
+import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=30";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -799,7 +799,7 @@ $("#newMemberAdd").onclick = async () => {
 $("#newMemberName").addEventListener("keydown", (ev) => { if (ev.key === "Enter" && !ev.isComposing) { ev.preventDefault(); $("#newMemberAdd").click(); } });
 
 // 标题加 emoji：点 😀 打开选单，点一个就插进游标位置
-const TITLE_EMOJIS = ["📸", "🎥", "👰", "🤵", "💍", "👗", "💄", "💐", "🎂", "🎉", "🎁", "❤️", "🍽️", "☕", "🍱", "🛍️", "✈️", "🚗", "🏖️", "🏠",
+const TITLE_EMOJIS = ["‼️", "❗", "❓", "💲", "💵", "💸", "📸", "🎥", "👰", "🤵", "💍", "👗", "💄", "💐", "🎂", "🎉", "🎁", "❤️", "🍽️", "☕", "🍱", "🛍️", "✈️", "🚗", "🏖️", "🏠",
   "💼", "📞", "💻", "📝", "📅", "⏰", "✅", "⚠️", "⭐", "🔥", "💰", "🏥", "💊", "🏃", "⚽", "🎵", "📚", "🐶", "🐱", "😊"];
 $("#titleEmojis").innerHTML = TITLE_EMOJIS.map((e) => `<button type="button" data-emo="${e}">${e}</button>`).join("");
 $("#titleEmojiBtn").onclick = () => { $("#titleEmojis").hidden = !$("#titleEmojis").hidden; };
