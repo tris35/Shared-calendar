@@ -201,10 +201,13 @@ async function syncOne(l: Link, e: any, body: any, s: Settings) {
   const gid = prev?.google_event_id || googleIdFor(e.id, l.user_id, s.secret);
   try {
     const json = JSON.stringify({ ...body, id: gid });
+    // 更新时不送 status：送 "confirmed" 会把在 Google 上删掉的活动又救回来
+    const { status: _status, ...patchBody } = body;
+    const patchJson = JSON.stringify(patchBody);
     const calId = prev?.calendar_id || l.calendar_id; // 已有的 → 在它原本的日历更新；新的 → 主日历
     const cal = encodeURIComponent(calId);
     // PATCH：只改 App 管的栏位，保留 Google 上其他资料（邀请的人、视讯会议、附件…）
-    const put = () => gfetch(l, `/calendars/${cal}/events/${encodeURIComponent(gid)}`, { method: "PATCH", body: json });
+    const put = () => gfetch(l, `/calendars/${cal}/events/${encodeURIComponent(gid)}`, { method: "PATCH", body: patchJson });
     let res = await put();                                   // 已存在 → 更新
     if (res.status === 404 || res.status === 410) {
       res = await gfetch(l, `/calendars/${cal}/events`, { method: "POST", body: json }); // 不存在 → 建立
@@ -212,6 +215,16 @@ async function syncOne(l: Link, e: any, body: any, s: Settings) {
     }
     if (!res.ok) throw new Error(await gerror(res));
     const saved: any = await res.json().catch(() => ({}));
+    if (saved.status === "cancelled") {
+      // 这个人已经在 Google 删掉了 → App 也删掉（和其他人 Google 里的副本）
+      const others = (await db.listEventGoogle(e.id)).filter((m: any) => m.user_id !== l.user_id);
+      const photos = await db.listPhotos(e.id);
+      if (await db.deleteEvent(e.id)) {
+        for (const p of photos) await deletePhotoData(p.blob_key);
+        await deleteGoogleEvents(others as any);
+      }
+      return { ok: true, deleted: true };
+    }
     // 记住我们写入的版本：之后从 Google 读回时，看到同一个版本就知道是自己写的，不会当成别人修改
     await db.setEventGoogle(e.id, l.user_id, { google_event_id: gid, calendar_id: calId, etag: saved.etag ?? null });
     return { ok: true };
