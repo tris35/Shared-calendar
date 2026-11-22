@@ -16,7 +16,7 @@
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
   <meta name="mobile-web-app-capable" content="yes" />
   <title>Shared Calendar</title>
-  <link rel="stylesheet" href="style.css?v=81" />
+  <link rel="stylesheet" href="style.css?v=82" />
 </head>
 <body class="locked">
   <!-- 登录 / 注册（打开 App 前） -->
@@ -235,7 +235,7 @@
             <input id="acctName" maxlength="40" data-i18n-aria="my_name" />
             <button type="button" class="btn small" id="acctNameSave" data-i18n="rename_btn"></button>
           </div>
-          <details class="howto">
+          <details class="howto" id="pwChangeBox" hidden><!-- 不需要：忘记密码用登录页的「忘记密码？」-->
             <summary data-i18n="change_pw"></summary>
             <form id="pwForm" class="pw-form">
               <input id="pwOld" type="password" autocomplete="current-password" data-i18n-placeholder="pw_old" />
@@ -569,8 +569,8 @@
   </dialog>
 
   <div id="toast" class="toast" role="status"></div>
-  <script src="config.js?v=81"></script>
-  <script src="app.js?v=81" type="module"></script>
+  <script src="config.js?v=82"></script>
+  <script src="app.js?v=82" type="module"></script>
   <script>
     if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
   </script>
