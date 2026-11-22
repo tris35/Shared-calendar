@@ -864,3 +864,6 @@ body.viewer #detailMenuBtn, body.viewer #deleteEventBtn, body.viewer #editEventB
 #forgotForm[hidden], #fpStep2[hidden], .auth-tabs[hidden], .auth-foot[hidden], .forgot-link[hidden] { display: none !important; }
 #pwChangeBox[hidden] { display: none !important; }
 .fp-send { margin: 10px 0 6px; }
+#forgotForm label > span { display: block; margin-bottom: 6px; }
+#forgotForm label { margin-top: 10px; }
+.fp-send { margin: 16px 0 8px !important; }
