@@ -1,5 +1,5 @@
 // ===================== Shared Calendar / 共享日历 =====================
-import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=39";
+import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=40";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -956,7 +956,8 @@ async function renderSettings() {
     const [me, set] = await Promise.all([api("/api/auth/me"), api("/api/settings")]);
     state.me = me;
     $("#acctEmail").textContent = me.email;
-    $("#waStatus").textContent = state.config?.whatsapp ? t("wa_ready") : t("wa_not_ready");
+    $("#waStatus").textContent = state.config?.whatsapp ? t("wa_ready") : "";
+    $("#waStatus").hidden = !state.config?.whatsapp; // 还没设定时不显示说明
     $("#waNoAccess").hidden = !!me.can_whatsapp;
     $("#waAdmin").hidden = !me.admin;
     if (me.admin) { loadWaUsers(); loadDigest(); loadAdmins(); loadWaText(); }
