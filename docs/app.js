@@ -1,5 +1,5 @@
 // ===================== Shared Calendar / 共享日历 =====================
-import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=17";
+import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=18";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -7,8 +7,9 @@ const pad = (n) => String(n).padStart(2, "0");
 const dayKey = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const toLocalInput = (iso) => { if (!iso) return ""; const d = new Date(iso); return `${dayKey(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}`; };
 const fromLocalInput = (v) => (v ? new Date(v).toISOString() : null);
-const fmtTime = (iso) => new Date(iso).toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit" });
-const fmtDateTime = (iso) => new Date(iso).toLocaleString(locale(), { month: "short", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit" });
+const timeLocale = () => (locale().startsWith("en") ? "en-US" : locale()); // 英文用「9:30 AM」（大写 AM/PM）
+const fmtTime = (iso) => new Date(iso).toLocaleTimeString(timeLocale(), { hour: "numeric", minute: "2-digit", hour12: true }); // 12 小时制
+const fmtDateTime = (iso) => new Date(iso).toLocaleString(locale(), { month: "short", day: "numeric", weekday: "short" }) + " " + fmtTime(iso);
 const fmtLongDate = (d) => d.toLocaleDateString(locale(), { year: "numeric", month: "long", day: "numeric", weekday: "short" });
 const store = {
   get: (k) => { try { return localStorage.getItem(k); } catch { return null; } },
@@ -226,7 +227,7 @@ function openDayDialog() {
   flush();
   let html = "";
   for (let h = 0; h < 24; h++) {
-    const label = h === 0 ? "" : new Date(2000, 0, 1, h).toLocaleTimeString(locale(), { hour: "numeric" });
+    const label = h === 0 ? "" : new Date(2000, 0, 1, h).toLocaleTimeString(timeLocale(), { hour: "numeric", hour12: true });
     html += `<div class="dd-line" style="top:${h * HOUR_PX}px"><span>${esc(label)}</span></div>`;
   }
   html += items.map(({ e, s0, e0, col, cols }) => `<button type="button" class="dd-ev dd-block${e.color ? " lbl" : ""}" data-id="${e.id}"
