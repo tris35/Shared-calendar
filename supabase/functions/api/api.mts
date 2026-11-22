@@ -65,7 +65,8 @@ export async function handleApi(req: Request): Promise<Response> {
         const link = await handleCallback(url);
         later((async () => {
           await ensureWatch(link.user_id, siteUrl).catch((e) => console.error(e));
-          for (const e of await db.listEvents({ from: new Date(Date.now() - 60 * 86400000).toISOString() })) await syncEvent(e.id, siteUrl, link.user_id);
+          const l2: any = await db.getGoogleLink(link.user_id);
+          for (const e of await db.listEvents({ from: new Date(Date.now() - 60 * 86400000).toISOString(), calendarId: l2?.app_calendar_id ?? -1 })) await syncEvent(e.id, siteUrl, link.user_id);
         })());
         return Response.redirect(`${mainUrl(siteUrl)}/?google=ok&email=${encodeURIComponent(link.gmail)}#settings`, 302);
       } catch (err: any) {
@@ -82,6 +83,21 @@ export async function handleApi(req: Request): Promise<Response> {
     const who = me.name;
     if (!req.headers.get("x-lang")) lang = normLang(me.lang);
     const r = seg[0];
+    // ---------- 现在用的日历（每个帐号自己的 + 被邀请的） ----------
+    let myCals: any[] = await db.listMyCalendars(me.id);
+    if (!myCals.length) { await db.createCalendar(me.name, me.id); myCals = await db.listMyCalendars(me.id); }
+    const wantCal = Number(req.headers.get("x-cal") || url.searchParams.get("cal") || 0);
+    const cur: any = myCals.find((c) => c.id === wantCal) || myCals[0];
+    const calId: number = cur.id;
+    const roleIn = (cid: number | null) => myCals.find((c) => c.id === cid)?.role as string | undefined;
+    const mustEdit = () => { if (cur.role === "viewer") throw new HttpError(403, "你只能查看这个日历"); };
+    // 行程一定要在我有加入的日历里；要修改的话不能是「只能查看」
+    const needEvent = async (eid: number, write: boolean) => {
+      const e: any = await db.getEvent(eid);
+      if (!e || !roleIn(e.calendar_id)) notFound();
+      if (write && roleIn(e.calendar_id) === "viewer") throw new HttpError(403, "你只能查看这个日历");
+      return e;
+    };
     // 没有 WhatsApp 权限 → 忽略客户电话 / 讯息 / 自动发送的修改
     const eventInput = async () => {
       const b = await body();
@@ -101,7 +117,7 @@ export async function handleApi(req: Request): Promise<Response> {
     if (r === "auth") {
       if (seg[1] === "me" && method === "GET") {
         const link = await db.getGoogleLink(me.id);
-        return Response.json({ ...publicUser(me), google: link ? { gmail: link.gmail, calendarName: link.calendar_name || desc(normLang(me.lang), "calendar") } : null });
+        return Response.json({ ...publicUser(me), google: link ? { gmail: link.gmail, appCalendarId: link.app_calendar_id ?? null, calendarName: link.calendar_name || desc(normLang(me.lang), "calendar") } : null });
       }
       if (seg[1] === "me" && method === "PATCH") {
         const b = await body();
@@ -110,15 +126,16 @@ export async function handleApi(req: Request): Promise<Response> {
           const name = String(b.name || "").trim().slice(0, 40);
           if (!name) throw new Error("请输入名字");
           await db.setUserName(me.id, name);
-          await db.ensureMember(name);
+          await db.ensureMember(name, calId);
           out.name = name;
         }
         if (b.lang !== undefined && LANG_CODES.includes(b.lang)) {
           await db.setUserLang(me.id, b.lang);
           out.lang = b.lang;
           // 换语言 → 我的 Google 日历说明也换语言
-          if (await db.getGoogleLink(me.id)) later((async () => {
-            for (const e of await db.listEvents({ from: new Date(Date.now() - 60 * 86400000).toISOString() })) await syncEvent(e.id, siteUrl, me.id);
+          const gl: any = await db.getGoogleLink(me.id);
+          if (gl) later((async () => {
+            for (const e of await db.listEvents({ from: new Date(Date.now() - 60 * 86400000).toISOString(), calendarId: gl.app_calendar_id ?? -1 })) await syncEvent(e.id, siteUrl, me.id);
           })());
         }
         return Response.json(out);
@@ -128,15 +145,16 @@ export async function handleApi(req: Request): Promise<Response> {
 
     if (r === "config" && method === "GET") {
       const s = await getSettings();
-      return Response.json({ claude: claudeEnabled(), timezone: s.timezone, labels: db.LABELS, labelNames: s.labelNames || {}, waDefault: s.waDefault || "", googleLoginReady: !!clientCredentials(), whatsapp: !!waConfig(), siteUrl: mainUrl(siteUrl), googleRedirectUri: redirectUri() });
+      return Response.json({ claude: claudeEnabled(), timezone: s.timezone, labels: db.LABELS, labelNames: cur.label_names || {}, calendarId: calId, calendarRole: cur.role, waDefault: s.waDefault || "", googleLoginReady: !!clientCredentials(), whatsapp: !!waConfig(), siteUrl: mainUrl(siteUrl), googleRedirectUri: redirectUri() });
     }
 
     // ---------- 行程 ----------
     if (r === "events") {
       if (!seg[1]) {
-        if (method === "GET") return Response.json(await db.listEvents(Object.fromEntries(url.searchParams)));
-        if (method === "POST") { const e = await db.createEvent(await eventInput(), who); sync(e.id); return Response.json(e); }
+        if (method === "GET") { const qs: any = Object.fromEntries(url.searchParams); return Response.json(await db.listEvents({ from: qs.from, to: qs.to, q: qs.q, calendarId: calId })); }
+        if (method === "POST") { mustEdit(); const e = await db.createEvent({ ...(await eventInput()), calendar_id: calId }, who); sync(e.id); return Response.json(e); }
       }
+      if (seg[1]) await needEvent(id, method !== "GET"); // 只能看 / 改自己日历里的行程
       // 清单：列出 / 新增（文字或范本）
       if (seg[2] === "checklist" && method === "GET") return Response.json(await db.listChecklist(id));
       if (seg[2] === "checklist" && method === "POST") {
@@ -196,6 +214,7 @@ export async function handleApi(req: Request): Promise<Response> {
     if (r === "photos") {
       const p = await db.getPhoto(id);
       if (!p) notFound();
+      if (p.event_id) await needEvent(p.event_id, method !== "GET");
       if (seg[2] === "file" && method === "GET") {
         const data = await getPhotoData(p.blob_key);
         if (!data) notFound();
@@ -215,6 +234,7 @@ export async function handleApi(req: Request): Promise<Response> {
 
     if (r === "comments" && method === "DELETE") {
       const c = await db.getComment(id);
+      if (c?.event_id) await needEvent(c.event_id, true);
       const ok = await db.deleteComment(id);
       if (c) sync(c.event_id);
       return Response.json({ ok });
@@ -244,6 +264,9 @@ export async function handleApi(req: Request): Promise<Response> {
     // ---------- 清单项目：打勾 / 删除 ----------
     if (r === "checklist" && seg[1]) {
       const itemId = Number(seg[1]);
+      const item: any = await db.getChecklistItem(itemId);
+      if (!item) notFound();
+      await needEvent(item.event_id, true);
       if (method === "PATCH") { const r2 = await db.setChecklistDone(itemId, !!(await body()).done, who); if (!r2) notFound(); return Response.json(await db.listChecklist(r2.event_id)); }
       if (method === "DELETE") { const r2 = await db.deleteChecklistItem(itemId); if (!r2) notFound(); return Response.json(await db.listChecklist(r2.event_id)); }
     }
@@ -259,19 +282,77 @@ export async function handleApi(req: Request): Promise<Response> {
     if (r === "labels" && seg[1] && method === "PUT") {
       const id = seg[1];
       if (!db.LABELS[id]) notFound();
+      mustEdit();
       const name = String((await body()).name ?? "").trim().slice(0, 30);
-      const names = { ...((await getSettings()).labelNames || {}) };
+      const names = { ...(cur.label_names || {}) }; // 每个日历自己的标签名称
       if (name) names[id] = name; else delete names[id];
-      await saveSettings({ labelNames: names });
+      await db.setCalendarLabelNames(calId, names);
       return Response.json({ labelNames: names });
+    }
+
+    // ---------- 日历：我的日历清单、改名、成员、邀请连结 ----------
+    if (r === "calendars") {
+      if (!seg[1] && method === "GET") return Response.json({ current: calId, calendars: myCals.map((c) => ({ id: c.id, name: c.name, role: c.role, members: c.member_count })) });
+      if (!seg[1] && method === "POST") { // 另外建立一个新日历
+        const nid = await db.createCalendar(String((await body()).name || ""), me.id);
+        await db.ensureMember(me.name, nid);
+        return Response.json({ id: nid });
+      }
+      const cid = Number(seg[1]);
+      const role = roleIn(cid);
+      if (!role) notFound();
+      const ownerOnly = () => { if (role !== "owner") throw new HttpError(403, "只有日历拥有者可以这样做"); };
+      if (!seg[2] && method === "PATCH") { ownerOnly(); await db.renameCalendar(cid, String((await body()).name || "")); return Response.json({ ok: true }); }
+      if (seg[2] === "people" && method === "GET") return Response.json(await db.listCalendarPeople(cid));
+      if (seg[2] === "people" && seg[3] && method === "PATCH") {
+        ownerOnly();
+        const nr = (await body()).role === "viewer" ? "viewer" : "editor";
+        return Response.json({ ok: await db.setCalendarRole(cid, Number(seg[3]), nr) });
+      }
+      if (seg[2] === "people" && seg[3] && method === "DELETE") {
+        const uid = Number(seg[3]);
+        if (uid !== me.id) ownerOnly(); // 自己可以离开；踢别人要是拥有者
+        return Response.json({ ok: await db.removeCalendarMember(cid, uid) });
+      }
+      // 邀请连结：拥有者和可以编辑的人都能产生；拥有者可以让旧连结全部失效
+      if (seg[2] === "invite" && method === "POST") {
+        if (role === "viewer") throw new HttpError(403, "你只能查看这个日历");
+        const ir = (await body()).role === "viewer" ? "viewer" : "editor";
+        const token = crypto.randomUUID().replace(/-/g, "");
+        await db.createInvite(cid, ir, me.id, token);
+        return Response.json({ token, role: ir, url: `${mainUrl(siteUrl)}/?join=${token}` });
+      }
+      if (seg[2] === "invite" && method === "DELETE") { ownerOnly(); await db.revokeInvites(cid); return Response.json({ ok: true }); }
+    }
+    // 用邀请连结加入
+    if (r === "join") {
+      const token = String(seg[1] || (method === "POST" ? (await body()).token : "") || "");
+      const inv: any = token ? await db.getInvite(token) : null;
+      if (!inv) throw new HttpError(404, "邀请连结无效或已经失效");
+      if (method === "GET") return Response.json({ calendar: inv.calendar_name, role: inv.role });
+      if (method === "POST") {
+        await db.joinCalendar(inv.calendar_id, me.id, inv.role);
+        await db.ensureMember(me.name, inv.calendar_id);
+        return Response.json({ id: inv.calendar_id, name: inv.calendar_name, role: inv.role });
+      }
+    }
+    // Google 日历要和哪一个 App 日历同步
+    if (r === "google" && seg[1] === "app-calendar" && method === "PUT") {
+      const cid = Number((await body()).calendarId);
+      if (!roleIn(cid)) notFound();
+      await db.setGoogleAppCalendar(me.id, cid);
+      return Response.json({ ok: true });
     }
 
     // ---------- 成员 ----------
     if (r === "members") {
       if (!seg[1]) {
-        if (method === "GET") return Response.json(await db.listMembers());
-        if (method === "POST") return Response.json(await db.createMember(await body()));
+        if (method === "GET") return Response.json(await db.listMembers(calId));
+        if (method === "POST") { mustEdit(); return Response.json(await db.createMember(await body(), calId)); }
       }
+      const mem: any = await db.getMember(id);
+      if (!mem || mem.calendar_id !== calId) notFound();
+      mustEdit();
       if (method === "PATCH") { const m = await db.updateMember(id, await body()); if (!m) notFound(); return Response.json(m); }
       if (method === "DELETE") return Response.json({ ok: await db.deleteMember(id) });
     }
@@ -305,7 +386,8 @@ export async function handleApi(req: Request): Promise<Response> {
         if (!(await db.getGoogleLink(me.id))) throw new Error("你还没连接 Google 日历");
         // 同步最近 60 天到未来 1 年的行程（每次最多约 45 秒，没做完可再按一次）
         const from = new Date(Date.now() - 60 * 86400000).toISOString(), to = new Date(Date.now() + 365 * 86400000).toISOString();
-        const events = await db.listEvents({ from, to });
+        const gl2: any = await db.getGoogleLink(me.id);
+        const events = await db.listEvents({ from, to, calendarId: gl2?.app_calendar_id ?? -1 });
         const deadline = Date.now() + 45_000;
         let ok = 0, failed = 0, lastError = "";
         for (const e of events) {

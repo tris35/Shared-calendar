@@ -1,5 +1,5 @@
 // ===================== Shared Calendar / 共享日历 =====================
-import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=70";
+import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=71";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -76,7 +76,7 @@ async function api(path, opts = {}) {
   } catch (e) { if (pg) progressEnd(null); throw e; }
 }
 async function apiRaw(path, opts = {}) {
-  const headers = { "x-lang": getLang(), ...(token() ? { Authorization: `Bearer ${token()}` } : {}), ...(opts.headers || {}) };
+  const headers = { "x-lang": getLang(), ...(token() ? { Authorization: `Bearer ${token()}` } : {}), ...(store.get("cal") ? { "x-cal": store.get("cal") } : {}), ...(opts.headers || {}) };
   let body = opts.body;
   if (body && !(body instanceof FormData)) { headers["Content-Type"] = "application/json"; body = JSON.stringify(body); }
   const res = await fetch(API_BASE + path, { ...opts, body, headers });
@@ -975,6 +975,7 @@ async function renderSettings() {
     $("#icsUrl").value = set.icsUrl;
     $("#gRedirectUri").textContent = state.config.googleRedirectUri || `${location.origin}/api/google/callback`;
     const ready = !!state.config.googleLoginReady;
+    renderCalCard();
     $("#gConnected").hidden = !me.google;
     $("#calList").hidden = !me.google;
     if (me.google) loadCalList();
@@ -1817,9 +1818,124 @@ $("#tplList").addEventListener("click", async (ev) => {
   }
 });
 
+
+// =====================================================================
+// 📚 日历：每个帐号自己的日历 + 邀请连结一起编辑
+// =====================================================================
+const curCalId = () => Number(store.get("cal") || 0) || null;
+// 打开邀请连结（?join=…）：先记下来，登录后再加入
+(() => {
+  const qs = new URLSearchParams(location.search);
+  const j = qs.get("join");
+  if (j) { store.set("pendingJoin", j); qs.delete("join"); history.replaceState(null, "", location.pathname + (qs.toString() ? "?" + qs : "") + location.hash); }
+})();
+async function loadCalendars() {
+  const r = await api("/api/calendars");
+  state.calendars = r.calendars || [];
+  if (!state.calendars.some((c) => c.id === curCalId())) store.set("cal", String(r.current));
+  state.cal = state.calendars.find((c) => c.id === curCalId()) || state.calendars[0];
+  document.body.classList.toggle("viewer", state.cal?.role === "viewer"); // 只能查看：隐藏新增 / 编辑 / 删除
+  renderCalSelects();
+}
+function renderCalSelects() {
+  const opts = (state.calendars || []).map((c) => `<option value="${c.id}">${esc(c.name)}${c.role !== "owner" ? " · " + esc(t("r_" + c.role)) : ""}</option>`).join("");
+  for (const sel of [$("#calSelect"), $("#homeCalSel")]) { sel.innerHTML = opts; sel.value = String(state.cal?.id || ""); }
+  $("#homeCalSel").closest(".home-cal").hidden = (state.calendars || []).length < 2; // 只有一个日历就不显示
+}
+async function switchCalendar(id) {
+  if (!id || id === state.cal?.id) return;
+  store.set("cal", String(id));
+  await loadCalendars();
+  [state.config, state.members] = await Promise.all([api("/api/config"), api("/api/members")]);
+  state.labelNames = state.config.labelNames || {};
+  await loadMonth();
+  showView(state.view);
+}
+$("#calSelect").addEventListener("change", (ev) => switchCalendar(Number(ev.target.value)));
+$("#homeCalSel").addEventListener("change", (ev) => switchCalendar(Number(ev.target.value)));
+// 用邀请连结加入
+async function joinPending() {
+  const tk = store.get("pendingJoin");
+  if (!tk) return false;
+  store.set("pendingJoin", "");
+  try {
+    const r = await api("/api/join", { method: "POST", body: { token: tk }, silent: true });
+    store.set("cal", String(r.id));
+    setTimeout(() => toast(t("cl_joined", { name: r.name })), 400);
+    return true;
+  } catch (e) { setTimeout(() => toast(t("cl_join_fail", { error: e.message })), 400); return false; }
+}
+// 设置页：日历卡片
+async function renderCalCard() {
+  const c = state.cal; if (!c) return;
+  const owner = c.role === "owner";
+  $("#calName").value = c.name;
+  $("#calRenameRow").hidden = !owner;
+  $("#calRoleNote").textContent = t("cl_role_" + c.role);
+  $("#calInviteBtns").hidden = c.role === "viewer";
+  $("#calLinkBox").hidden = true;
+  $("#calLeaveBtn").hidden = owner;
+  $("#calGoogleSel").innerHTML = (state.calendars || []).map((x) => `<option value="${x.id}">${esc(x.name)}</option>`).join("");
+  $("#calGoogleBox").hidden = !state.me?.google;
+  if (state.me?.google) $("#calGoogleSel").value = String(state.me.google.appCalendarId || "");
+  try {
+    const people = await api(`/api/calendars/${c.id}/people`);
+    $("#calPeople").innerHTML = people.map((p) => `<li data-uid="${p.id}"><span class="who"><b>${esc(p.name)}</b> ${p.id === state.me?.id ? `<span class="muted">${esc(t("cl_you"))}</span>` : ""}<br><span class="muted">${esc(p.email)}</span></span>
+      ${owner && p.role !== "owner" ? `<select data-role="${p.id}"><option value="editor">${esc(t("r_editor"))}</option><option value="viewer">${esc(t("r_viewer"))}</option></select>
+        <button type="button" class="ck-del" data-kick="${p.id}" data-name="${esc(p.name)}" aria-label="${esc(t("remove"))}">✕</button>`
+        : `<span class="role-chip">${esc(t("r_" + p.role))}</span>`}</li>`).join("");
+    people.forEach((p) => { const s = $(`#calPeople [data-role="${p.id}"]`); if (s) s.value = p.role; });
+  } catch (e) { $("#calPeople").innerHTML = `<li class="warn">${esc(e.message)}</li>`; }
+}
+$("#calRenameBtn").onclick = async () => {
+  try { await api(`/api/calendars/${state.cal.id}`, { method: "PATCH", body: { name: $("#calName").value } }); await loadCalendars(); renderCalCard(); }
+  catch (e) { toast(e.message); }
+};
+$("#calInviteBtns").addEventListener("click", async (ev) => {
+  const b = ev.target.closest("[data-invite]"); if (!b) return;
+  try {
+    const r = await api(`/api/calendars/${state.cal.id}/invite`, { method: "POST", body: { role: b.dataset.invite } });
+    const url = `${location.origin}${location.pathname}?join=${r.token}`;
+    $("#calLink").value = url;
+    $("#calWaShare").href = `https://wa.me/?text=${encodeURIComponent(t("cl_invite_msg", { name: state.cal.name, url }))}`;
+    $("#calLinkBox").hidden = false;
+    toast(t("cl_link_ready"));
+  } catch (e) { toast(e.message); }
+});
+$("#calCopy").onclick = async () => {
+  try { await navigator.clipboard.writeText($("#calLink").value); toast("✓ " + t("copy")); }
+  catch { $("#calLink").select(); document.execCommand("copy"); }
+};
+$("#calPeople").addEventListener("change", async (ev) => {
+  const s = ev.target.closest("[data-role]"); if (!s) return;
+  try { await api(`/api/calendars/${state.cal.id}/people/${s.dataset.role}`, { method: "PATCH", body: { role: s.value } }); } catch (e) { toast(e.message); }
+});
+$("#calPeople").addEventListener("click", async (ev) => {
+  const k = ev.target.closest("[data-kick]"); if (!k) return;
+  if (!(await askConfirm(t("cl_remove_confirm", { name: k.dataset.name }), t("remove")))) return;
+  try { await api(`/api/calendars/${state.cal.id}/people/${k.dataset.kick}`, { method: "DELETE" }); renderCalCard(); } catch (e) { toast(e.message); }
+});
+$("#calLeaveBtn").onclick = async () => {
+  if (!(await askConfirm(t("cl_leave_confirm", { name: state.cal.name }), t("cl_leave")))) return;
+  try {
+    await api(`/api/calendars/${state.cal.id}/people/${state.me.id}`, { method: "DELETE" });
+    store.set("cal", ""); location.reload();
+  } catch (e) { toast(e.message); }
+};
+$("#calNewBtn").onclick = async () => {
+  const name = prompt(t("cl_new_prompt"));
+  if (!name || !name.trim()) return;
+  try { const r = await api("/api/calendars", { method: "POST", body: { name } }); await switchCalendar(r.id); renderCalCard(); } catch (e) { toast(e.message); }
+};
+$("#calGoogleSel").addEventListener("change", async (ev) => {
+  try { await api("/api/google/app-calendar", { method: "PUT", body: { calendarId: Number(ev.target.value) } }); } catch (e) { toast(e.message); }
+});
+
 let started = false;
 async function startApp() {
   state.me = await api("/api/auth/me");
+  await joinPending();   // 用邀请连结打开的 → 先加入那个日历
+  await loadCalendars(); // 我的日历清单 + 现在用哪一个
   if (state.me.lang && state.me.lang !== getLang()) setLang(state.me.lang); // 帐号里存的语言，所有设备一致
   document.body.classList.remove("locked");
   [state.config, state.members] = await Promise.all([api("/api/config"), api("/api/members")]);

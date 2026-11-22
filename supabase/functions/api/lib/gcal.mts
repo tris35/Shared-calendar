@@ -85,6 +85,13 @@ export async function handleCallback(url: URL) {
   if (!link.calendar_id || !(await calendarExists(link))) link.calendar_id = gmail;
   if (old?.gmail !== gmail || old?.calendar_id !== link.calendar_id) await db.clearEventGoogle(userId); // 新日历 → 全部重新同步
   await db.saveGoogleLink(link);
+  // 新连接：默认和自己的 App 日历同步
+  const saved: any = await db.getGoogleLink(userId);
+  if (saved && saved.app_calendar_id == null) {
+    const mine: any[] = await db.listMyCalendars(userId);
+    const own = mine.find((c) => c.role === "owner") || mine[0];
+    if (own) await db.setGoogleAppCalendar(userId, own.id);
+  }
   if (!old || old.calendar_id !== link.calendar_id) await db.switchGoogleCalendar(userId, link.calendar_id, link.calendar_id === gmail ? gmail : desc(lang, "calendar"));
   return link;
 }
@@ -238,10 +245,12 @@ async function syncOne(l: Link, e: any, body: any, s: Settings) {
 
 /** 把一个行程写入/更新到每个已连接的人的 Google 日历（onlyUserId：只同步某个人） */
 export async function syncEvent(eventId: number, siteUrl: string, onlyUserId?: number, exceptUserId?: number) {
-  const links = (await db.listGoogleLinks()).filter((l: any) => (!onlyUserId || l.user_id === onlyUserId) && l.user_id !== exceptUserId);
-  if (!links.length) return { skipped: true };
   const e = await db.getEvent(eventId);
   if (!e) return { skipped: true };
+  // 只同步到「选了这个 App 日历」的人的 Google 日历
+  const links = (await db.listGoogleLinks()).filter((l: any) => (!onlyUserId || l.user_id === onlyUserId) && l.user_id !== exceptUserId
+    && l.app_calendar_id != null && l.app_calendar_id === e.calendar_id);
+  if (!links.length) return { skipped: true };
   const s = await getSettings();
   // 每个人的 Google 日历用他自己的语言写说明
   const bodies = new Map<Lang, any>();
@@ -432,7 +441,7 @@ export async function setCalendarEnabled(userId: number, calendarId: string, ena
 
 async function pullOnce(userId: number, siteUrl: string, deadline: number) {
   const l: any = await db.getGoogleLink(userId);
-  if (!l?.calendar_id) return { ok: false, skipped: true };
+  if (!l?.calendar_id || !l.app_calendar_id) return { ok: false, skipped: true }; // 还没选 App 日历：不读入
   const user = await db.getUser(userId);
   const ctx = {
     l, userId, siteUrl, deadline,
@@ -512,7 +521,7 @@ async function pullCalendar(ctx: any, cal: any) {
         await db.setEventGoogle(Number(own), userId, { google_event_id: ev.id, calendar_id: calId, etag: ev.etag });
         continue;
       }
-      const e = await db.createEvent({ ...fromGoogle(ev, tz, true), remind: true }, who);
+      const e = await db.createEvent({ ...fromGoogle(ev, tz, true), remind: true, calendar_id: l.app_calendar_id }, who); // 放进他选的 App 日历
       await db.setEventGoogle(e.id, userId, { google_event_id: ev.id, calendar_id: calId, etag: ev.etag });
       ctx.createdIds.add(e.id);
       ctx.created++;

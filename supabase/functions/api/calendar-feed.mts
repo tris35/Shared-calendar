@@ -22,8 +22,9 @@ function fold(line: string) {
 }
 
 export async function handleFeed(req: Request, file: string): Promise<Response> {
-  const token = String(file || "").replace(/\.ics$/i, "");
-  if (!(await verify("ics", token))) return new Response("链接无效", { status: 403 });
+  // 现在每个帐号有自己的日历：旧的「所有行程」订阅链接会看到别人的日历，所以停用
+  void file; void verify;
+  return new Response("This subscription link is no longer available. Use Google Calendar sync instead.", { status: 410 });
   const { timezone } = await getSettings();
   const siteUrl = mainUrl(new URL(req.url).origin);
   const lang = normLang(new URL(req.url).searchParams.get("lang"));

@@ -53,7 +53,8 @@ export async function signup(body: any) {
   if (!passwordOk(password)) throw new AuthError(PW_RULE, 400);
   if (await db.getUserByEmail(email)) throw new AuthError("这个 Gmail 已经注册过了，请直接登录", 400);
   const user = await db.createUser({ email, name, password_hash: await hashPassword(password), lang: normLang(body.lang) });
-  await db.ensureMember(name); // 新成员会出现在「成员」列表
+  const calId = await db.createCalendar(name, user.id); // 每个帐号自己一个日历
+  await db.ensureMember(name, calId); // 自己出现在这个日历的「成员」列表
   return { token: await makeToken(user), user: publicUser(user) };
 }
 

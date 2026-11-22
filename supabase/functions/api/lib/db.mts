@@ -61,13 +61,14 @@ const EVENT_COLS = `e.*, m.name AS member_name, m.color AS member_color, m.emoji
   (SELECT COUNT(*) FROM photos p WHERE p.event_id = e.id)::int AS photo_count,
   (SELECT COUNT(*) FROM comments cm WHERE cm.event_id = e.id AND cm.photo_id IS NULL)::int AS memo_count`;
 
-export async function listEvents({ from, to, q: keyword }: { from?: string; to?: string; q?: string } = {}) {
+export async function listEvents({ from, to, q: keyword, calendarId }: { from?: string; to?: string; q?: string; calendarId?: number | null } = {}) {
   const rows = await q(
     `SELECT ${EVENT_COLS} FROM events e LEFT JOIN members m ON m.id = e.member_id
      WHERE ($1::timestamptz IS NULL OR COALESCE(e."end", e.start) >= $1) AND ($2::timestamptz IS NULL OR e.start < $2)
        AND ($3::text IS NULL OR e.title ILIKE '%' || $3 || '%' OR e.notes ILIKE '%' || $3 || '%')
+       AND ($4::int IS NULL OR e.calendar_id = $4)
      ORDER BY e.start`,
-    [from ? toIso(from) : null, to ? toIso(to) : null, keyword || null],
+    [from ? toIso(from) : null, to ? toIso(to) : null, keyword || null, calendarId ?? null],
   );
   return rows.map(outEvent);
 }
@@ -89,11 +90,11 @@ export async function createEvent(e: any, author?: string | null) {
   const start = toIso(e.start), end = toIso(e.end);
   if (!start) throw new Error("请填写开始时间");
   if (end && end < start) throw new Error("结束时间不能早于开始时间");
-  const [r] = await sql`INSERT INTO events (title, start, "end", all_day, notes, label, member_id, remind, created_by, customer_phone, customer_note, customer_auto, customer_name, customer_send_at, stage, amount_total, amount_paid)
+  const [r] = await sql`INSERT INTO events (title, start, "end", all_day, notes, label, member_id, remind, created_by, customer_phone, customer_note, customer_auto, customer_name, customer_send_at, stage, amount_total, amount_paid, calendar_id)
     VALUES (${title}, ${start}, ${end}, ${!!e.all_day}, ${clean(e.notes, 5000)}, ${checkLabel(e.label)},
             ${e.member_id ?? null}, ${e.remind === undefined ? true : !!e.remind}, ${clean(author, 60)},
             ${clean(e.customer_phone, 40)}, ${clean(e.customer_note, 2000)}, ${e.customer_auto === undefined ? true : !!e.customer_auto}, ${clean(e.customer_name, 80)}, ${e.customer_send_at ? toIso(e.customer_send_at) : null},
-            ${cleanStage(e.stage)}, ${money(e.amount_total)}, ${money(e.amount_paid)})
+            ${cleanStage(e.stage)}, ${money(e.amount_total)}, ${money(e.amount_paid)}, ${e.calendar_id ?? null})
     RETURNING id`;
   await logEvent(r.id, author, "created");
   return getEvent(r.id);
@@ -218,9 +219,9 @@ export async function setUserPassword(id: number, hash: string) {
   await sql`UPDATE users SET password_hash = ${hash} WHERE id = ${id}`;
 }
 /** 注册时把名字加进「成员」（已有同名就不加） */
-export async function ensureMember(name: string) {
-  const found = await sql`SELECT id FROM members WHERE LOWER(name) = LOWER(${name})`;
-  if (!found.length) await createMember({ name });
+export async function ensureMember(name: string, calendarId: number) {
+  const found = await sql`SELECT id FROM members WHERE LOWER(name) = LOWER(${name}) AND calendar_id = ${calendarId}`;
+  if (!found.length) await createMember({ name }, calendarId);
 }
 
 // ---------- 每个人的 Google 日历连接 ----------
@@ -368,7 +369,12 @@ export async function eventFeed(eventId: number) {
 
 // ---------- 成员 ----------
 const MEMBER_COLORS = ["#e8a33d", "#e07a5f", "#3d85c6", "#b565a7", "#e0a100", "#2a9d8f", "#d1495b", "#6c757d"];
-export async function listMembers() {
+export async function listMembers(calendarId?: number) {
+  if (calendarId) {
+    for (const r of await sql`SELECT id FROM members WHERE calendar_id = ${calendarId} AND (emoji IS NULL OR emoji = '') ORDER BY id`)
+      await sql`UPDATE members SET emoji = ${await pickEmoji()} WHERE id = ${r.id}`;
+    return (await sql`SELECT * FROM members WHERE calendar_id = ${calendarId} ORDER BY id`).map(outRow);
+  }
   // 以前建立、还没有 emoji 的人 → 补一个
   for (const r of await sql`SELECT id FROM members WHERE emoji IS NULL OR emoji = '' ORDER BY id`)
     await sql`UPDATE members SET emoji = ${await pickEmoji()} WHERE id = ${r.id}`;
@@ -386,11 +392,11 @@ async function pickEmoji() {
   const pool = free.length ? free : MEMBER_EMOJIS;
   return pool[Math.floor(Math.random() * pool.length)];
 }
-export async function createMember(m: any) {
+export async function createMember(m: any, calendarId?: number | null) {
   const name = clean(m.name, 40);
   if (!name) throw new Error("请填写名字");
   const [{ n }] = await sql`SELECT COUNT(*)::int AS n FROM members`;
-  const [r] = await sql`INSERT INTO members (name, color, emoji) VALUES (${name}, ${m.color || MEMBER_COLORS[n % MEMBER_COLORS.length]}, ${clean(m.emoji, 16) || (await pickEmoji())}) RETURNING id`;
+  const [r] = await sql`INSERT INTO members (name, color, emoji, calendar_id) VALUES (${name}, ${m.color || MEMBER_COLORS[n % MEMBER_COLORS.length]}, ${clean(m.emoji, 16) || (await pickEmoji())}, ${calendarId ?? null}) RETURNING id`;
   return getMember(r.id);
 }
 export async function updateMember(id: number, m: any) {
@@ -495,4 +501,57 @@ export async function deleteTemplate(id: number) {
 }
 export async function getTemplate(id: number) {
   return (await sql`SELECT id, name, items FROM checklist_templates WHERE id = ${id}`)[0] ?? null;
+}
+
+
+// ---------- 日历（每个帐号自己的 + 一起编辑的） ----------
+export async function listMyCalendars(userId: number) {
+  return sql`SELECT c.id, c.name, c.owner_id, c.label_names, cm.role,
+      (SELECT COUNT(*) FROM calendar_members x WHERE x.calendar_id = c.id)::int AS member_count
+    FROM calendar_members cm JOIN calendars c ON c.id = cm.calendar_id
+    WHERE cm.user_id = ${userId} ORDER BY (cm.role = 'owner') DESC, c.id`;
+}
+export async function createCalendar(name: string, ownerId: number) {
+  const [c] = await sql`INSERT INTO calendars (name, owner_id) VALUES (${clean(name, 60) || "My calendar"}, ${ownerId}) RETURNING id`;
+  await sql`INSERT INTO calendar_members (calendar_id, user_id, role) VALUES (${c.id}, ${ownerId}, 'owner') ON CONFLICT DO NOTHING`;
+  return c.id as number;
+}
+export async function renameCalendar(id: number, name: string) {
+  const n = clean(name, 60);
+  if (!n) throw new Error("请填写日历名称");
+  await sql`UPDATE calendars SET name = ${n} WHERE id = ${id}`;
+}
+export async function setCalendarLabelNames(id: number, names: Record<string, string>) {
+  await sql`UPDATE calendars SET label_names = ${JSON.stringify(names)}::jsonb WHERE id = ${id}`;
+}
+export async function listCalendarPeople(id: number) {
+  return sql`SELECT u.id, u.name, u.email, cm.role FROM calendar_members cm JOIN users u ON u.id = cm.user_id
+    WHERE cm.calendar_id = ${id} ORDER BY (cm.role = 'owner') DESC, u.name`;
+}
+export async function setCalendarRole(id: number, userId: number, role: string) {
+  return (await sql`UPDATE calendar_members SET role = ${role} WHERE calendar_id = ${id} AND user_id = ${userId} AND role <> 'owner' RETURNING user_id`).length > 0;
+}
+export async function removeCalendarMember(id: number, userId: number) {
+  return (await sql`DELETE FROM calendar_members WHERE calendar_id = ${id} AND user_id = ${userId} AND role <> 'owner' RETURNING user_id`).length > 0;
+}
+export async function createInvite(calendarId: number, role: string, by: number, token: string) {
+  await sql`INSERT INTO calendar_invites (token, calendar_id, role, created_by) VALUES (${token}, ${calendarId}, ${role}, ${by})`;
+}
+export async function getInvite(token: string) {
+  return (await sql`SELECT i.*, c.name AS calendar_name FROM calendar_invites i JOIN calendars c ON c.id = i.calendar_id
+    WHERE i.token = ${token} AND NOT i.revoked`)[0] ?? null;
+}
+export async function revokeInvites(calendarId: number) {
+  await sql`UPDATE calendar_invites SET revoked = TRUE WHERE calendar_id = ${calendarId}`;
+}
+export async function joinCalendar(calendarId: number, userId: number, role: string) {
+  // 已经是成员：保留比较高的权限
+  await sql`INSERT INTO calendar_members (calendar_id, user_id, role) VALUES (${calendarId}, ${userId}, ${role})
+    ON CONFLICT (calendar_id, user_id) DO UPDATE SET role = CASE WHEN calendar_members.role IN ('owner','editor') THEN calendar_members.role ELSE EXCLUDED.role END`;
+}
+export async function getChecklistItem(itemId: number) {
+  return (await sql`SELECT * FROM event_checklist WHERE id = ${itemId}`)[0] ?? null;
+}
+export async function setGoogleAppCalendar(userId: number, calendarId: number) {
+  await sql`UPDATE google_links SET app_calendar_id = ${calendarId} WHERE user_id = ${userId}`;
 }

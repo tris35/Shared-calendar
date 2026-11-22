@@ -836,3 +836,22 @@ button:active:not(:disabled), .item:active, .wk-item:active { transform: scale(.
   box-shadow: 0 14px 30px rgba(20, 35, 70, .3); transition: none; }
 .pcol { transition: background-color .12s, box-shadow .12s; min-height: 120px; }
 .pcol.pover { background: #d3e2fb; box-shadow: inset 0 0 0 2px #2d5fa8; }
+
+/* 📚 日历 / 邀请 */
+.cal-card select, .cal-card input { width: 100%; }
+.cal-rename { display: flex; gap: 8px; align-items: center; margin: 8px 0; }
+.cal-rename input { flex: 1; }
+.cal-invite { display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0 10px; }
+.cal-link { background: var(--soft, #eef4ff); border-radius: 12px; padding: 10px; margin-bottom: 10px; }
+.cal-link input { font-size: 13px; margin-bottom: 8px; }
+.cal-link .actions { display: flex; gap: 8px; align-items: center; }
+.cal-people { list-style: none; margin: 0 0 10px; padding: 0; }
+.cal-people li { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--line, #e3e8f0); }
+.cal-people .who { flex: 1; min-width: 0; overflow-wrap: anywhere; font-size: 14px; }
+.cal-people select { width: auto; }
+.role-chip { font-size: 12px; padding: 2px 8px; border-radius: 999px; background: var(--soft, #eef4ff); }
+.home-cal { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 14px; }
+.home-cal select { max-width: 220px; }
+/* 只能查看：藏起新增 / 编辑 / 删除 */
+body.viewer .fab, body.viewer #addEventBtn, body.viewer #dayNewBtn, body.viewer #ddNew, body.viewer .edit-btn, body.viewer .del-btn,
+body.viewer #detailMenuBtn, body.viewer #deleteEventBtn, body.viewer #editEventBtn, body.viewer #quickAdd { display: none !important; }

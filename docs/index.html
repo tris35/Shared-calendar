@@ -16,7 +16,7 @@
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
   <meta name="mobile-web-app-capable" content="yes" />
   <title>Shared Calendar</title>
-  <link rel="stylesheet" href="style.css?v=70" />
+  <link rel="stylesheet" href="style.css?v=71" />
 </head>
 <body class="locked">
   <!-- 登录 / 注册（打开 App 前） -->
@@ -60,7 +60,8 @@
     <!-- 日历 -->
     <!-- 今天（首页） -->
     <section id="view-home" class="view">
-      <div class="hello"><h2 id="homeHello"></h2><p id="homeDate"></p></div>
+      <div class="hello"><h2 id="homeHello"></h2><p id="homeDate"></p>
+        <label class="home-cal">📚 <select id="homeCalSel" data-i18n-aria="cl_current"></select></label></div>
       <div class="home-stats">
         <div class="stat"><b id="homeToday">0</b><span data-i18n="h_today"></span></div>
         <div class="stat"><b id="homeWeek">0</b><span data-i18n="h_week"></span></div>
@@ -211,6 +212,30 @@
     <!-- 设置 -->
     <section id="view-settings" class="view">
       <div class="settings">
+        <!-- 日历：切换、改名、成员、邀请连结 -->
+        <section class="card cal-card" id="calCard">
+          <h3 data-i18n="cl_title"></h3>
+          <label><span data-i18n="cl_current"></span><select id="calSelect"></select></label>
+          <div class="cal-rename" id="calRenameRow"><input id="calName" maxlength="60" /><button type="button" class="btn small" id="calRenameBtn" data-i18n="cl_rename"></button></div>
+          <p class="hint" style="padding:0" id="calRoleNote"></p>
+          <h4 data-i18n="cl_invite_title"></h4>
+          <p class="hint" style="padding:0" data-i18n="cl_invite_hint"></p>
+          <div class="cal-invite" id="calInviteBtns">
+            <button type="button" class="btn primary small" data-invite="editor" data-i18n="cl_invite_edit"></button>
+            <button type="button" class="btn small" data-invite="viewer" data-i18n="cl_invite_view"></button>
+          </div>
+          <div class="cal-link" id="calLinkBox" hidden>
+            <input id="calLink" readonly />
+            <div class="actions"><button type="button" class="btn small" id="calCopy" data-i18n="copy"></button>
+              <a class="wa-btn" id="calWaShare" target="_blank" rel="noopener" data-i18n="cl_share_wa"></a></div>
+          </div>
+          <h4 data-i18n="cl_people"></h4>
+          <ul id="calPeople" class="cal-people"></ul>
+          <div class="actions"><button type="button" class="btn small" id="calNewBtn" data-i18n="cl_new"></button><span class="spacer"></span>
+            <button type="button" class="btn danger small" id="calLeaveBtn" data-i18n="cl_leave"></button></div>
+          <div id="calGoogleBox"><h4 data-i18n="cl_google_title"></h4>
+          <label><span data-i18n="cl_google_hint"></span><select id="calGoogleSel"></select></label></div>
+        </section>
         <section class="card">
           <h3 data-i18n="acct_title"></h3>
           <div class="acct-row"><span class="acct-label" data-i18n="acct_gmail"></span><span id="acctEmail"></span></div>
@@ -530,8 +555,8 @@
   </dialog>
 
   <div id="toast" class="toast" role="status"></div>
-  <script src="config.js?v=70"></script>
-  <script src="app.js?v=70" type="module"></script>
+  <script src="config.js?v=71"></script>
+  <script src="app.js?v=71" type="module"></script>
   <script>
     if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
   </script>
