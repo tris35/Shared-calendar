@@ -662,3 +662,11 @@ button:active:not(:disabled), .item:active, .wk-item:active { transform: scale(.
 
 .ww-side { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
 .ww-del { margin: 0; }
+
+/* 预览：像 WhatsApp 的对话泡泡（同样的绿色、字体大小和行距） */
+#view-week .digest-preview { position: relative; align-self: flex-start; max-width: 92%; margin: 2px 0 6px 8px; padding: 7px 10px 18px;
+  background: #d9fdd3; color: #111b21; border-radius: 0 8px 8px 8px; box-shadow: 0 1px .5px rgba(11, 20, 26, .13);
+  font: 14.2px/19px -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; white-space: pre-wrap; word-break: break-word; }
+#view-week .digest-preview::before { content: ""; position: absolute; left: -8px; top: 0; border-top: 0 solid transparent;
+  border-right: 8px solid #d9fdd3; border-bottom: 10px solid transparent; }
+#view-week .digest-preview::after { content: "✓✓"; position: absolute; right: 8px; bottom: 3px; font-size: 11px; color: #53bdeb; letter-spacing: -2px; }

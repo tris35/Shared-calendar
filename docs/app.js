@@ -1,5 +1,5 @@
 // ===================== Shared Calendar / 共享日历 =====================
-import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=50";
+import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=51";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -1192,16 +1192,18 @@ async function loadWaAuto() {
     updateWaPreview();
   } catch (e) { waAutoLoaded = false; $("#dgPreview").textContent = e.message; }
 }
+const waFlatten = (txt) => String(txt || "").replace(/\r/g, "").split("\n").map((l) => l.trim()).filter(Boolean).join(" | ");
 let waPrevTimer = null;
 function updateWaPreview() {
   // 给客户：就是这段文字（WhatsApp 会把换行变成「 | 」）
-  $("#wtPreview").textContent = $("#wtText").value.trim() || "—";
+  // WhatsApp 商业讯息不能换行：空行拿掉，每一行用「 | 」接起来（和真正发出去的一样）
+  $("#wtPreview").textContent = waFlatten($("#wtText").value) || "—";
   // 给自己 / 员工的行程摘要：用目前选的「每天 / 每星期一」从伺服器算出来（还没保存）
   clearTimeout(waPrevTimer);
   waPrevTimer = setTimeout(async () => {
     const date = $("#dgDate").value;
     if (!date) { $("#dgPreview").textContent = t("dg_prev_off"); return; }
-    try { const d = await api(`/api/digest?preview=${date}`); $("#dgPreview").textContent = (d.preview || "").split(" | ").join("\n"); }
+    try { const d = await api(`/api/digest?preview=${date}`); $("#dgPreview").textContent = d.preview || ""; }
     catch (e) { $("#dgPreview").textContent = e.message; }
   }, 300);
 }
