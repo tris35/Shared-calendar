@@ -665,7 +665,7 @@ const EMOJIS = ["🐱", "🐶", "🐼", "🐨", "🐰", "🦊", "🐻", "🐷", 
 function renderEmojiPicker(selected) {
   memberForm.emoji.value = selected || "";
   $("#emojiCustom").value = selected && !EMOJIS.includes(selected) ? selected : "";
-  $("#emojiPicker").innerHTML = [["", t("emoji_none")], ...EMOJIS.map((e) => [e, e])].map(([v, txt]) =>
+  $("#emojiPicker").innerHTML = EMOJIS.map((e) => [e, e]).map(([v, txt]) =>
     `<button type="button" role="radio" data-emoji="${esc(v)}" aria-checked="${String((selected || "") === v)}" class="${v ? "" : "none"}">${esc(txt)}</button>`).join("");
 }
 $("#emojiPicker").addEventListener("click", (ev) => {
@@ -699,7 +699,10 @@ function openMember(m) {
   $("#memberDialogTitle").textContent = m ? t("edit_member") : t("new_member");
   memberForm.name.value = m?.name ?? "";
   memberForm.color.value = m?.color || ["#4f9d69", "#e07a5f", "#3d85c6", "#b565a7", "#e0a100", "#2a9d8f", "#d1495b", "#6c757d"][state.members.length % 8];
-  renderEmojiPicker(m?.emoji);
+  // 新的人：先帮他选一个还没人用的 emoji（可以改）
+  const used = new Set(state.members.map((x) => x.emoji));
+  const free = EMOJIS.filter((e) => !used.has(e));
+  renderEmojiPicker(m?.emoji || (free.length ? free : EMOJIS)[Math.floor(Math.random() * (free.length || EMOJIS.length))]);
   $("#deleteMemberBtn").hidden = !m;
   $("#memberDialog").showModal();
 }

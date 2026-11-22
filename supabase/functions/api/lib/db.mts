@@ -328,16 +328,28 @@ export async function eventFeed(eventId: number) {
 // ---------- 成员 ----------
 const MEMBER_COLORS = ["#4f9d69", "#e07a5f", "#3d85c6", "#b565a7", "#e0a100", "#2a9d8f", "#d1495b", "#6c757d"];
 export async function listMembers() {
+  // 以前建立、还没有 emoji 的人 → 补一个
+  for (const r of await sql`SELECT id FROM members WHERE emoji IS NULL OR emoji = '' ORDER BY id`)
+    await sql`UPDATE members SET emoji = ${await pickEmoji()} WHERE id = ${r.id}`;
   return (await sql`SELECT * FROM members ORDER BY id`).map(outRow);
 }
 export async function getMember(id: number) {
   return outRow((await sql`SELECT * FROM members WHERE id = ${id}`)[0]) ?? null;
 }
+// 每个人默认一个可爱 / 搞笑的 emoji（和网页上的选单一样），先用还没人用的
+export const MEMBER_EMOJIS = ["🐱", "🐶", "🐼", "🐨", "🐰", "🦊", "🐻", "🐷", "🐸", "🐵", "🙈", "🐥", "🐧", "🦄", "🦖", "🐙", "🐳", "🦋", "🐝", "🐞",
+  "🌸", "🌈", "⭐", "🍓", "🍑", "🍩", "🧁", "🍦", "🎀", "🎈", "👻", "🤡", "💩", "🤪", "😜", "😎", "🥳", "🤠", "🤓", "😴", "🤖", "👽", "👑", "💖"];
+async function pickEmoji() {
+  const used = new Set((await sql`SELECT emoji FROM members WHERE emoji IS NOT NULL`).map((r: any) => r.emoji));
+  const free = MEMBER_EMOJIS.filter((e) => !used.has(e));
+  const pool = free.length ? free : MEMBER_EMOJIS;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
 export async function createMember(m: any) {
   const name = clean(m.name, 40);
   if (!name) throw new Error("请填写名字");
   const [{ n }] = await sql`SELECT COUNT(*)::int AS n FROM members`;
-  const [r] = await sql`INSERT INTO members (name, color, emoji) VALUES (${name}, ${m.color || MEMBER_COLORS[n % MEMBER_COLORS.length]}, ${clean(m.emoji, 16)}) RETURNING id`;
+  const [r] = await sql`INSERT INTO members (name, color, emoji) VALUES (${name}, ${m.color || MEMBER_COLORS[n % MEMBER_COLORS.length]}, ${clean(m.emoji, 16) || (await pickEmoji())}) RETURNING id`;
   return getMember(r.id);
 }
 export async function updateMember(id: number, m: any) {
@@ -345,7 +357,7 @@ export async function updateMember(id: number, m: any) {
   if (!old) return null;
   const name = m.name !== undefined ? clean(m.name, 40) : old.name;
   if (!name) throw new Error("请填写名字");
-  const emoji = m.emoji !== undefined ? clean(m.emoji, 16) : old.emoji;
+  const emoji = (m.emoji !== undefined ? clean(m.emoji, 16) : old.emoji) || old.emoji || (await pickEmoji());
   await sql`UPDATE members SET name = ${name}, color = ${m.color || old.color}, emoji = ${emoji} WHERE id = ${id}`;
   return getMember(id);
 }
