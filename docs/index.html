@@ -16,7 +16,7 @@
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
   <meta name="mobile-web-app-capable" content="yes" />
   <title>Shared Calendar</title>
-  <link rel="stylesheet" href="style.css?v=20" />
+  <link rel="stylesheet" href="style.css?v=21" />
 </head>
 <body class="locked">
   <!-- 登录 / 注册（打开 App 前） -->
@@ -268,6 +268,7 @@
       <button type="button" class="icon-btn" id="detailClose" data-i18n-aria="close">✕</button>
       <h3 data-i18n="detail_title"></h3>
       <div class="menu-wrap">
+        <button type="button" class="edit-btn" id="detailEditTop" data-i18n="edit_btn"></button>
         <button type="button" class="del-btn" id="detailTrashBtn" data-i18n="delete" data-i18n-title="menu_delete"></button>
         <button type="button" class="icon-btn" id="detailMenuBtn" data-i18n-aria="more">⋮</button>
         <div id="detailMenu" class="menu" hidden>
@@ -278,7 +279,7 @@
       </div>
     </div>
     <div class="sheet-body" id="detailBody">
-      <div class="hero">
+      <div class="hero editable" data-edit title="">
         <h2 id="dTitle" class="d-title"></h2>
         <div class="d-dates">
           <div class="d-date"><small id="dStartYear"></small><b id="dStartDay"></b><span id="dStartTime"></span></div>
@@ -287,10 +288,10 @@
         </div>
       </div>
       <ul class="d-rows">
-        <li id="dMemberRow"><span class="ico">👤</span><span id="dMember"></span></li>
-        <li><span class="ico">🔔</span><span id="dRemind"></span></li>
-        <li id="dLabelRow"><span class="ico">🏷</span><span id="dLabel"></span></li>
-        <li id="dNotesRow"><span class="ico">📝</span><span id="dNotes" class="pre"></span></li>
+        <li id="dMemberRow" class="editable" data-edit><span class="ico">👤</span><span id="dMember"></span></li>
+        <li class="editable" data-edit><span class="ico">🔔</span><span id="dRemind"></span></li>
+        <li id="dLabelRow" class="editable" data-edit><span class="ico">🏷</span><span id="dLabel"></span></li>
+        <li id="dNotesRow" class="editable" data-edit><span class="ico">📝</span><span id="dNotes" class="pre"></span></li>
         <li id="dCustomerRow"><span class="ico">💬</span><div class="d-customer">
           <div id="dCustomerPhone" class="d-cphone"></div>
           <div id="dCustomerNote" class="pre"></div>
@@ -424,8 +425,8 @@
   </dialog>
 
   <div id="toast" class="toast" role="status"></div>
-  <script src="config.js?v=20"></script>
-  <script src="app.js?v=20" type="module"></script>
+  <script src="config.js?v=21"></script>
+  <script src="app.js?v=21" type="module"></script>
   <script>
     if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
   </script>

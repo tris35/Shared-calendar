@@ -1,5 +1,5 @@
 // ===================== Shared Calendar / 共享日历 =====================
-import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=20";
+import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=21";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -475,6 +475,11 @@ $("#formFeed").addEventListener("click", onFeedClick);
 $("#detailMenuBtn").onclick = (ev) => { ev.stopPropagation(); $("#detailMenu").hidden = !$("#detailMenu").hidden; };
 $("#detailDialog").addEventListener("click", (ev) => { if (!ev.target.closest(".menu-wrap")) $("#detailMenu").hidden = true; });
 $("#detailEditBtn").onclick = () => { $("#detailMenu").hidden = true; openEditor(current); };
+$("#detailEditTop").onclick = () => openEditor(current);
+// 点标题、日期或资料列 → 编辑
+$("#detailBody").addEventListener("click", (ev) => {
+  if (ev.target.closest("[data-edit]") && !ev.target.closest("a, button") && current) openEditor(current);
+});
 $("#detailSyncBtn").onclick = async () => {
   $("#detailMenu").hidden = true;
   if (!state.me?.google) { toast(t("sync_need_connect")); return; }
