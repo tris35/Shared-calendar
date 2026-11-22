@@ -1,5 +1,5 @@
 // ===================== Shared Calendar / 共享日历 =====================
-import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=69";
+import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=70";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -1622,20 +1622,80 @@ async function renderPipeline() {
   const fmtD = (iso) => new Date(iso).toLocaleDateString(locale(), { day: "numeric", month: "short" });
   $("#boardPipeline").innerHTML = STAGES.map((st, i) => {
     const list = evs.filter((e) => (e.stage || "booked") === st).sort((a, b) => new Date(a.start) - new Date(b.start));
-    return `<div class="pcol"><h5><span>${esc(t("st_" + st))}</span><span class="n">${list.length}</span></h5>
+    return `<div class="pcol" data-stage="${st}"><h5><span>${esc(t("st_" + st))}</span><span class="n">${list.length}</span></h5>
       ${list.map((e) => { const b = badges(e); return `<div class="pcard${e.color ? " lbl" : ""}" data-id="${e.id}" style="--c:${esc(eventColor(e))}">
         <div class="t">${esc(e.title)}</div><div class="s">${esc(fmtD(e.start))}${b ? " · " + b : ""}</div>
-        ${i < STAGES.length - 1 ? `<button type="button" class="pmove" data-move="${e.id}" data-to="${STAGES[i + 1]}">${esc(t("st_move"))}</button>` : ""}</div>`; }).join("")}
+</div>`; }).join("")}
     </div>`;
   }).join("");
 }
-$("#boardPipeline").addEventListener("click", async (ev) => {
-  const mv = ev.target.closest("[data-move]");
-  if (mv) {
-    ev.stopPropagation();
-    try { await api(`/api/events/${mv.dataset.move}`, { method: "PATCH", body: { stage: mv.dataset.to } }); renderPipeline(); } catch (e) { toast(e.message); }
-    return;
+// 拖拉卡片换阶段：电脑直接拖；手机按住一下再拖（直接滑动 = 左右卷动）
+let pDrag = null, pJustDragged = false;
+function pStart(card, x, y, touch) {
+  const r = card.getBoundingClientRect();
+  pDrag = { card, id: Number(card.dataset.id), from: card.closest(".pcol").dataset.stage, x0: x, y0: y, dx: x - r.left, dy: y - r.top,
+    w: r.width, active: false, touch, timer: null, ghost: null, over: null };
+  if (touch) pDrag.timer = setTimeout(() => pActivate(x, y), 280); // 按住 0.28 秒才开始拖
+}
+function pActivate(x, y) {
+  if (!pDrag || pDrag.active) return;
+  pDrag.active = true;
+  const g = pDrag.card.cloneNode(true);
+  g.classList.add("pghost"); g.style.width = pDrag.w + "px";
+  document.body.appendChild(g); pDrag.ghost = g;
+  pDrag.card.classList.add("pdragging");
+  if (navigator.vibrate) navigator.vibrate(15);
+  pMove(x, y);
+}
+function pMove(x, y) {
+  if (!pDrag) return;
+  if (!pDrag.active) {
+    const moved = Math.hypot(x - pDrag.x0, y - pDrag.y0);
+    if (pDrag.touch) { if (moved > 10) { clearTimeout(pDrag.timer); pDrag = null; } return; } // 手机：还没按住就移动 = 卷动
+    if (moved > 6) pActivate(x, y); else return;
   }
+  pDrag.ghost.style.transform = `translate(${x - pDrag.dx}px, ${y - pDrag.dy}px) rotate(2deg)`;
+  pDrag.ghost.style.visibility = "hidden";
+  const col = document.elementFromPoint(x, y)?.closest(".pcol");
+  pDrag.ghost.style.visibility = "";
+  document.querySelectorAll(".pcol.pover").forEach((c) => c !== col && c.classList.remove("pover"));
+  if (col) col.classList.add("pover");
+  pDrag.over = col?.dataset.stage || null;
+  // 靠近左右边缘 → 自动卷动看板
+  const box = $("#boardPipeline"), br = box.getBoundingClientRect();
+  if (x > br.right - 40) box.scrollLeft += 14; else if (x < br.left + 40) box.scrollLeft -= 14;
+}
+async function pEnd() {
+  if (!pDrag) return;
+  clearTimeout(pDrag.timer);
+  const d = pDrag; pDrag = null;
+  if (!d.active) return;
+  pJustDragged = true; setTimeout(() => (pJustDragged = false), 50);
+  d.ghost?.remove(); d.card.classList.remove("pdragging");
+  document.querySelectorAll(".pcol.pover").forEach((c) => c.classList.remove("pover"));
+  if (d.over && d.over !== d.from) {
+    // 先在画面上搬过去，再存
+    const col = document.querySelector(`.pcol[data-stage="${d.over}"]`);
+    col?.appendChild(d.card);
+    try { await api(`/api/events/${d.id}`, { method: "PATCH", body: { stage: d.over } }); } catch (e) { toast(e.message); }
+    renderPipeline();
+  }
+}
+$("#boardPipeline").addEventListener("mousedown", (ev) => { const c = ev.target.closest(".pcard"); if (c && ev.button === 0) { ev.preventDefault(); pStart(c, ev.clientX, ev.clientY, false); } });
+window.addEventListener("mousemove", (ev) => pDrag && !pDrag.touch && pMove(ev.clientX, ev.clientY));
+window.addEventListener("mouseup", () => pDrag && !pDrag.touch && pEnd());
+$("#boardPipeline").addEventListener("touchstart", (ev) => { const c = ev.target.closest(".pcard"); if (c) { const t0 = ev.touches[0]; pStart(c, t0.clientX, t0.clientY, true); } }, { passive: true });
+window.addEventListener("touchmove", (ev) => {
+  if (!pDrag) return;
+  const t0 = ev.touches[0];
+  if (pDrag.active) ev.preventDefault(); // 拖拉中不要卷动画面
+  pMove(t0.clientX, t0.clientY);
+}, { passive: false });
+window.addEventListener("touchend", () => pDrag && pEnd());
+window.addEventListener("touchcancel", () => pDrag && pEnd());
+$("#boardPipeline").addEventListener("contextmenu", (ev) => { if (ev.target.closest(".pcard")) ev.preventDefault(); }); // 按住不要跳出选单
+$("#boardPipeline").addEventListener("click", (ev) => {
+  if (pJustDragged) return;
   const c = ev.target.closest(".pcard"); if (c) openDetail(Number(c.dataset.id));
 });
 async function renderPayments() {

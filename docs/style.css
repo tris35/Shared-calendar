@@ -828,3 +828,11 @@ button:active:not(:disabled), .item:active, .wk-item:active { transform: scale(.
 
 #dCheckTpl[hidden] { display: none; }
 .ck-add input { flex: 1 1 auto; }
+
+/* 看板拖拉 */
+.pcard { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; cursor: grab; }
+.pcard.pdragging { opacity: .35; }
+.pghost { position: fixed; left: 0; top: 0; z-index: 9998; pointer-events: none; margin: 0; cursor: grabbing;
+  box-shadow: 0 14px 30px rgba(20, 35, 70, .3); transition: none; }
+.pcol { transition: background-color .12s, box-shadow .12s; min-height: 120px; }
+.pcol.pover { background: #d3e2fb; box-shadow: inset 0 0 0 2px #2d5fa8; }
