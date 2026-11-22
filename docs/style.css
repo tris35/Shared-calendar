@@ -506,3 +506,10 @@ body.locked > .topbar, body.locked > main, body.locked > .tabbar { display: none
 .icon-btn.trash { font-size: 18px; }
 .icon-btn.trash:hover { background: #fde2df; }
 .menu-wrap { display: flex; align-items: center; gap: 2px; }
+
+/* 选中那天：「＋ 新增行程」按钮 */
+.day-new { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; margin: 0 0 10px; padding: 12px; border-radius: 14px;
+  border: 1.5px dashed color-mix(in srgb, var(--accent) 50%, var(--border)); background: var(--surface); color: var(--accent); font-size: 15px; cursor: pointer; }
+.day-new span { font-size: 20px; font-weight: 800; line-height: 1; }
+.day-new:hover, .day-new:focus-visible { background: color-mix(in srgb, var(--accent) 8%, var(--surface)); border-style: solid; }
+.day-panel { scroll-margin-top: 8px; }

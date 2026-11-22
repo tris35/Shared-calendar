@@ -63,12 +63,7 @@
       <div id="monthGrid" class="month-grid"></div>
       <div class="day-panel">
         <h2 id="dayTitle"></h2>
-        <form id="quickAdd" class="quick-add" autocomplete="off">
-          <span class="qa-plus">＋</span>
-          <input id="quickTitle" maxlength="300" data-i18n-placeholder="qa_ph" />
-          <button type="submit" class="btn primary small" data-i18n="qa_add"></button>
-          <button type="button" class="btn small" id="quickMore" data-i18n="qa_more"></button>
-        </form>
+        <button type="button" id="dayNewBtn" class="day-new"><span>＋</span> <b id="dayNewText"></b></button>
         <ul id="dayList" class="list"></ul>
       </div>
       <button class="fab" id="addEventBtn" data-i18n-aria="add_event">＋</button>

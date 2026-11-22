@@ -191,40 +191,28 @@ function renderMonth() {
   $("#monthGrid").innerHTML = html;
   renderDay();
 }
-// 快速新增：在选中的那天输入标题就新增（全天）；「更多…」打开完整表单
-$("#quickAdd").addEventListener("submit", async (ev) => {
-  ev.preventDefault();
-  const title = $("#quickTitle").value.trim();
-  if (!title) { $("#quickTitle").focus(); return; }
-  const btn = $("#quickAdd button[type=submit]"); btn.disabled = true;
-  try {
-    const d = new Date(state.selected); d.setHours(0, 0, 0, 0);
-    await api("/api/events", { method: "POST", body: { title, all_day: true, start: d.toISOString(), end: null, remind: true } });
-    $("#quickTitle").value = "";
-    toast(t("qa_added"));
-    await loadMonth();
-  } catch (e) { toast(t("save_failed", { error: e.message })); }
-  btn.disabled = false;
-});
-$("#quickMore").onclick = () => {
-  const title = $("#quickTitle").value.trim();
-  openEditor(null, state.selected);
-  if (title) eventForm.title.value = title;
-  $("#quickTitle").value = "";
-};
+// 选中那天上面的按钮：新增这天的行程
+$("#dayNewBtn").onclick = () => openEditor(null, state.selected);
 
 $("#monthGrid").addEventListener("click", (ev) => {
   const cell = ev.target.closest(".day");
   if (!cell) return;
   const [y, m, d] = cell.dataset.day.split("-").map(Number);
   const picked = new Date(y, m - 1, d);
-  if (dayKey(picked) === dayKey(state.selected)) return openEditor(null, picked); // 再点一次 = 新增
+  const same = dayKey(picked) === dayKey(state.selected);
   state.selected = picked;
+  // 点日期只显示那天的行程（不会直接打开新增），手机上自动卷到下面的清单
+  setTimeout(() => { // 只有清单在画面外时才卷动
+    const top = $(".day-panel").getBoundingClientRect().top;
+    if (top > window.innerHeight - 140) $(".day-panel").scrollIntoView({ behavior: "smooth", block: "start" });
+  }, 50);
+  if (same) return;
   if (picked.getMonth() !== state.month.getMonth()) { state.month = new Date(y, m - 1, 1); loadMonth(); } else renderMonth();
 });
 function renderDay() {
   const k = dayKey(state.selected);
   $("#dayTitle").textContent = state.selected.toLocaleDateString(locale(), { month: "long", day: "numeric", weekday: "long" });
+  $("#dayNewText").textContent = t("day_new", { date: state.selected.toLocaleDateString(locale(), { day: "numeric", month: "short" }) });
   const evs = eventsByDay()[k] || [];
   $("#dayList").innerHTML = evs.length ? evs.map((e) => `
     <li class="item tinted${e.color ? " lbl" : ""}" data-id="${e.id}" style="--c:${esc(eventColor(e))}">
