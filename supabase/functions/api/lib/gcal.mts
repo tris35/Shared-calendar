@@ -414,7 +414,8 @@ async function pullOnce(userId: number, siteUrl: string, deadline: number) {
     }
     // 把改动推给其他人的 Google 日历（也会把这个人的那笔更新成 App 的格式）
     // 推给其他人的 Google 日历（这个人的 Google 已经是最新的，不用再写）
-    for (const id of createdIds) { if (Date.now() > deadline + 8_000) break; await syncEvent(id, siteUrl); }
+    // 只推给其他人：这个人的 Google 本来就有这一笔，再写回去会造成重复
+    for (const id of createdIds) { if (Date.now() > deadline + 8_000) break; await syncEvent(id, siteUrl, undefined, userId); }
     for (const id of touched) { if (Date.now() > deadline + 8_000) break; await syncEvent(id, siteUrl, undefined, userId); }
     return { ok: true, created, updated, deleted, done };
   } catch (err: any) {
