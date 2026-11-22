@@ -1,5 +1,5 @@
 // ===================== Shared Calendar / 共享日历 =====================
-import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=67";
+import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=68";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -195,7 +195,9 @@ function showView(v) {
   document.querySelectorAll(".tabbar button").forEach((b) => b.classList.toggle("active", b.dataset.view === v));
   const cal = v === "calendar";
   ["#prevMonth", "#nextMonth", "#todayBtn"].forEach((s) => ($(s).style.visibility = cal ? "visible" : "hidden"));
-  $("#title").textContent = cal ? monthTitle() : { members: t("tab_members"), week: t("tab_week"), claude: t("tab_claude"), settings: t("tab_settings") }[v];
+  $("#title").textContent = cal ? monthTitle() : { home: t("tab_home"), board: t("tab_board"), members: t("tab_members"), week: t("tab_week"), claude: t("tab_claude"), settings: t("tab_settings") }[v];
+  if (v === "home") renderHome();
+  if (v === "board") renderBoard();
   if (v === "members") renderMembers();
   if (v === "week") renderWeek();
   if (v === "settings") renderSettings();
@@ -377,6 +379,7 @@ async function openDetail(id) {
 }
 function showDetailNow(id) {
   renderDetail();
+  loadChecklist(id);
   $("#detailMenu").hidden = true;
   $("#postAs").textContent = t("posting_as", { name: myName() });
   if (!$("#detailDialog").open) $("#detailDialog").showModal();
@@ -390,6 +393,7 @@ $("#detailClose").onclick = closeDetail;
 
 function renderDetail() {
   const e = current;
+  renderStudioDetail();
   const color = eventColor(e);
   $("#dTitle").textContent = e.title;
   $("#dTitle").style.color = `color-mix(in srgb, ${color} 45%, #1d2740)`; // 粉彩色太浅，标题用深一点
@@ -762,6 +766,8 @@ function openEditor(e, day, hour) {
     eventForm.notes.value = e.notes ?? "";
     eventForm.customer_phone.value = e.customer_phone ?? "";
     eventForm.customer_name.value = e.customer_name ?? "";
+    eventForm.amount_total.value = e.amount_total ?? "";
+    eventForm.amount_paid.value = e.amount_paid ?? "";
     eventForm.customer_note.value = e.customer_note ?? "";
     eventForm.customer_auto.checked = e.customer_auto !== 0;
   } else {
@@ -773,6 +779,8 @@ function openEditor(e, day, hour) {
   }
   fillDateTime();
   $("#titleEmojis").hidden = true;
+  fillStageSelect(eventForm.stage, e?.stage || "booked");
+  if (!e) { eventForm.amount_total.value = ""; eventForm.amount_paid.value = ""; }
   renderLabelPicker(e?.label);
   $("#formChatInput").value = "";
   renderFormFeed();
@@ -834,6 +842,9 @@ eventForm.addEventListener("submit", async (ev) => {
     label: selectedLabel(), remind: f.remind.checked, notes: f.notes.value.trim() || null,
     customer_phone: f.customer_phone.value.trim() || null, customer_note: f.customer_note.value.trim() || null,
     customer_name: f.customer_name.value.trim() || null,
+    stage: f.stage.value || "booked",
+    amount_total: f.amount_total.value === "" ? null : Number(f.amount_total.value),
+    amount_paid: f.amount_paid.value === "" ? null : Number(f.amount_paid.value),
     customer_auto: f.customer_auto.checked,
   };
   const saveBtn = eventForm.querySelector('button[type="submit"]');
@@ -910,6 +921,7 @@ $("#emojiCustom").addEventListener("input", () => {
 
 async function renderMembers() {
   renderLabels();
+  renderTemplates();
   state.members = await api("/api/members");
   $("#memberList").innerHTML = state.members.length ? state.members.map((m) => `
     <li class="item" data-id="${m.id}">${avatar(m.name)}<div class="main"><div class="t">${esc(m.name)}</div></div></li>`).join("")
@@ -1514,6 +1526,238 @@ async function pullGoogle() {
     }
   } catch {}
 }
+
+// =====================================================================
+// 工作室功能：今天首页、看板（流程 / 付款 / 工作量）、付款、清单
+// =====================================================================
+const STAGES = ["enquiry", "booked", "shoot", "editing", "delivered"];
+const RM = (n) => "RM " + Number(n || 0).toLocaleString("en-MY", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+const balanceOf = (e) => (e.amount_total ? Math.max(0, Number(e.amount_total) - Number(e.amount_paid || 0)) : 0);
+const fetchRange = (from, to) => api(`/api/events?from=${encodeURIComponent(from.toISOString())}&to=${encodeURIComponent(to.toISOString())}`);
+const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+const startOfDay = (d) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
+function fillStageSelect(sel, value) {
+  sel.innerHTML = STAGES.map((s) => `<option value="${s}">${esc(t("st_" + s))}</option>`).join("");
+  sel.value = value || "booked";
+}
+// 小标签：清单进度、还欠多少
+function badges(e) {
+  const out = [];
+  if (e.check_total) out.push(`✅ ${e.check_done}/${e.check_total}`);
+  const bal = balanceOf(e);
+  if (bal > 0) out.push(`💰 ${esc(t("p_due", { n: Number(bal).toLocaleString("en-MY") }))}`);
+  return out.join(" · ");
+}
+// WhatsApp 连结：0 开头的马来西亚号码 → 60
+function waLink(phone) {
+  let d = String(phone || "").replace(/\D/g, "");
+  if (d.startsWith("0")) d = "60" + d.slice(1);
+  return d ? `https://wa.me/${d}` : "";
+}
+
+// ---------- 🏠 今天 ----------
+let homeTimer = null;
+async function renderHome() {
+  const now = new Date(), today = startOfDay(now);
+  const h = now.getHours();
+  const name = state.me?.name || "";
+  $("#homeHello").textContent = t(h < 12 ? "h_morning" : h < 18 ? "h_afternoon" : "h_evening", { name });
+  $("#homeDate").textContent = now.toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "long" });
+  let evs = [];
+  try { evs = await fetchRange(addDays(today, -120), addDays(today, 180)); } catch (e) { $("#homeList").innerHTML = `<p class="hint warn">${esc(e.message)}</p>`; return; }
+  const todayK = dayKey(today);
+  const todays = evs.filter((e) => eventDays(e).includes(todayK)).sort((a, b) => (b.all_day - a.all_day) || new Date(a.start) - new Date(b.start));
+  const wk0 = weekStart(0), wk1 = addDays(wk0, 7);
+  const weekCount = evs.filter((e) => new Date(e.start) < wk1 && new Date(e.end || e.start) >= wk0).length;
+  const due = evs.reduce((s, e) => s + balanceOf(e), 0);
+  $("#homeToday").textContent = todays.length;
+  $("#homeWeek").textContent = weekCount;
+  $("#homeDue").textContent = RM(due);
+  // 下一个行程 + 倒数
+  const next = evs.filter((e) => !e.all_day && new Date(e.end || e.start) > now).sort((a, b) => new Date(a.start) - new Date(b.start))[0];
+  const nx = $("#homeNext");
+  nx.hidden = !next;
+  const tick = () => {
+    if (!next) return;
+    const ms = new Date(next.start) - new Date();
+    let txt = t("h_now");
+    if (ms > 0) {
+      const m = Math.round(ms / 60000), d = Math.floor(m / 1440), hh = Math.floor((m % 1440) / 60), mm = m % 60;
+      txt = t("h_in", { t: (d ? `${d}d ` : "") + (d || hh ? `${hh}h ` : "") + `${mm}m` });
+    }
+    nx.innerHTML = `<span>${esc(t("h_next"))} <b>${esc(next.title)}</b></span><b class="cd">${esc(txt)}</b>`;
+    nx.dataset.id = next.id;
+  };
+  tick(); clearInterval(homeTimer); homeTimer = setInterval(() => { if (state.view === "home") tick(); }, 30_000);
+  $("#homeList").innerHTML = todays.length ? todays.map((e) => {
+    const b = badges(e), wa = e.customer_phone ? waLink(e.customer_phone) : "";
+    return `<div class="hcard${e.color ? " lbl" : ""}" data-id="${e.id}" style="--c:${esc(eventColor(e))}">
+      <div class="t">${esc(e.title)}</div>
+      <div class="s">${e.all_day ? esc(t("all_day")) : fmtTime(e.start) + (e.end ? " – " + fmtTime(e.end) : "")}${e.member_name ? " · " + esc((e.member_emoji ? e.member_emoji + " " : "") + e.member_name) : ""}${e.label ? " · " + esc(labelName(e.label)) : ""}</div>
+      ${b || wa ? `<div class="row">${b ? `<span class="pill">${b}</span>` : "<span></span>"}${wa ? `<a class="wa-btn" href="${wa}" target="_blank" rel="noopener">${esc(t("h_wa"))}</a>` : ""}</div>` : ""}
+    </div>`;
+  }).join("") : `<p class="hint home-none">${esc(t("h_none"))}</p>`;
+}
+$("#homeList").addEventListener("click", (ev) => { if (ev.target.closest("a")) return; const c = ev.target.closest(".hcard"); if (c) openDetail(Number(c.dataset.id)); });
+$("#homeNext").addEventListener("click", () => { const id = Number($("#homeNext").dataset.id); if (id) openDetail(id); });
+
+// ---------- 📋 看板 ----------
+state.boardSeg = "pipeline"; state.payMonth = 0; state.wlWeek = 0;
+$("#boardSeg").addEventListener("click", (ev) => {
+  const b = ev.target.closest("[data-seg]"); if (!b) return;
+  state.boardSeg = b.dataset.seg; renderBoard();
+});
+function renderBoard() {
+  $("#boardSeg").querySelectorAll("[data-seg]").forEach((b) => b.classList.toggle("on", b.dataset.seg === state.boardSeg));
+  $("#boardPipeline").hidden = state.boardSeg !== "pipeline";
+  $("#boardPayments").hidden = state.boardSeg !== "payments";
+  $("#boardWorkload").hidden = state.boardSeg !== "workload";
+  if (state.boardSeg === "pipeline") renderPipeline();
+  if (state.boardSeg === "payments") renderPayments();
+  if (state.boardSeg === "workload") renderWorkload();
+}
+async function renderPipeline() {
+  const today = startOfDay(new Date());
+  let evs = [];
+  try { evs = await fetchRange(addDays(today, -90), addDays(today, 365)); } catch (e) { $("#boardPipeline").innerHTML = `<p class="hint warn">${esc(e.message)}</p>`; return; }
+  const fmtD = (iso) => new Date(iso).toLocaleDateString(locale(), { day: "numeric", month: "short" });
+  $("#boardPipeline").innerHTML = STAGES.map((st, i) => {
+    const list = evs.filter((e) => (e.stage || "booked") === st).sort((a, b) => new Date(a.start) - new Date(b.start));
+    return `<div class="pcol"><h5><span>${esc(t("st_" + st))}</span><span class="n">${list.length}</span></h5>
+      ${list.map((e) => { const b = badges(e); return `<div class="pcard${e.color ? " lbl" : ""}" data-id="${e.id}" style="--c:${esc(eventColor(e))}">
+        <div class="t">${esc(e.title)}</div><div class="s">${esc(fmtD(e.start))}${b ? " · " + b : ""}</div>
+        ${i < STAGES.length - 1 ? `<button type="button" class="pmove" data-move="${e.id}" data-to="${STAGES[i + 1]}">${esc(t("st_move"))}</button>` : ""}</div>`; }).join("")}
+    </div>`;
+  }).join("");
+}
+$("#boardPipeline").addEventListener("click", async (ev) => {
+  const mv = ev.target.closest("[data-move]");
+  if (mv) {
+    ev.stopPropagation();
+    try { await api(`/api/events/${mv.dataset.move}`, { method: "PATCH", body: { stage: mv.dataset.to } }); renderPipeline(); } catch (e) { toast(e.message); }
+    return;
+  }
+  const c = ev.target.closest(".pcard"); if (c) openDetail(Number(c.dataset.id));
+});
+async function renderPayments() {
+  const base = new Date(); base.setDate(1); base.setHours(0, 0, 0, 0); base.setMonth(base.getMonth() + state.payMonth);
+  const end = new Date(base); end.setMonth(end.getMonth() + 1);
+  $("#payMonth").textContent = base.toLocaleDateString(locale(), { month: "long", year: "numeric" });
+  let evs = [];
+  try { evs = (await fetchRange(base, end)).filter((e) => e.amount_total && new Date(e.start) >= base); } catch (e) { $("#payBox").innerHTML = `<p class="hint warn">${esc(e.message)}</p>`; return; }
+  const total = evs.reduce((s, e) => s + Number(e.amount_total || 0), 0);
+  const paid = evs.reduce((s, e) => s + Math.min(Number(e.amount_paid || 0), Number(e.amount_total || 0)), 0);
+  const due = evs.filter((e) => balanceOf(e) > 0).sort((a, b) => new Date(a.start) - new Date(b.start));
+  $("#payBox").innerHTML = `<div class="money"><div class="big">
+      <div><b>${RM(total)}</b><span>${esc(t("pay_total"))}</span></div>
+      <div><b class="ok">${RM(paid)}</b><span>${esc(t("pay_received"))}</span></div>
+      <div><b class="bad">${RM(total - paid)}</b><span>${esc(t("pay_balance"))}</span></div></div></div>
+    <div class="money"><div class="mh">${esc(t("pay_collect"))}</div>
+      ${due.length ? due.map((e) => `<div class="due-row" data-id="${e.id}"><span>${esc(e.title)} · ${esc(new Date(e.start).toLocaleDateString(locale(), { day: "numeric", month: "short" }))}</span><b>${RM(balanceOf(e))}</b></div>`).join("")
+        : `<p class="hint">${esc(t("pay_none"))}</p>`}</div>`;
+}
+$("#payPrev").onclick = () => { state.payMonth--; renderPayments(); };
+$("#payNext").onclick = () => { state.payMonth++; renderPayments(); };
+$("#payBox").addEventListener("click", (ev) => { const r = ev.target.closest(".due-row"); if (r) openDetail(Number(r.dataset.id)); });
+async function renderWorkload() {
+  const start = weekStart(state.wlWeek), end = addDays(start, 7);
+  $("#wlRange").textContent = `${start.toLocaleDateString(locale(), { day: "numeric", month: "short" })} – ${addDays(start, 6).toLocaleDateString(locale(), { day: "numeric", month: "short" })}`;
+  let evs = [];
+  try { evs = await fetchRange(start, end); } catch (e) { $("#wlBox").innerHTML = `<p class="hint warn">${esc(e.message)}</p>`; return; }
+  if (!state.members.length) { $("#wlBox").innerHTML = `<p class="hint">${esc(t("wl_nobody"))}</p>`; return; }
+  const days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
+  const shade = (n) => (n === 0 ? "background:#eef2f8;color:#a9b3c4" : `background:color-mix(in srgb, #e7766a ${Math.min(100, 25 + n * 22)}%, #fff);${n >= 3 ? "color:#fff" : ""}`);
+  $("#wlBox").innerHTML = `<div class="mh">${esc(t("wl_title"))}</div><div class="wl-scroll"><table><tr><th></th>${days.map((d) => `<th>${esc(d.toLocaleDateString(locale(), { weekday: "short" }))}<br><small>${d.getDate()}</small></th>`).join("")}</tr>
+    ${state.members.map((m) => `<tr><th class="who">${esc((m.emoji ? m.emoji + " " : "") + m.name)}</th>${days.map((d) => {
+      const n = evs.filter((e) => e.member_id === m.id && eventDays(e).includes(dayKey(d))).length;
+      return `<td style="${shade(n)}">${n}</td>`; }).join("")}</tr>`).join("")}</table></div>
+    <p class="hint" style="margin:6px 2px 0">${esc(t("wl_hint"))}</p>`;
+}
+$("#wlPrev").onclick = () => { state.wlWeek--; renderWorkload(); };
+$("#wlNext").onclick = () => { state.wlWeek++; renderWorkload(); };
+
+// ---------- 行程详情：阶段、付款、清单 ----------
+function renderStudioDetail() {
+  const e = current; if (!e) return;
+  fillStageSelect($("#dStage"), e.stage || "booked");
+  $("#dPayTotal").value = e.amount_total ?? "";
+  $("#dPayPaid").value = e.amount_paid ?? "";
+  const bal = balanceOf(e);
+  $("#dPayBal").textContent = e.amount_total ? RM(bal) : "—";
+  $("#dPayBal").className = bal > 0 ? "bad" : "ok";
+  $("#dPayDue").textContent = e.amount_total ? (bal > 0 ? t("p_due", { n: Number(bal).toLocaleString("en-MY") }) : t("p_full")) : "";
+  $("#dPayDue").className = bal > 0 ? "bad" : "ok";
+}
+$("#dStage").addEventListener("change", async () => {
+  if (!current) return;
+  try { current = { ...current, ...(await api(`/api/events/${current.id}`, { method: "PATCH", body: { stage: $("#dStage").value } })) }; renderStudioDetail(); } catch (e) { toast(e.message); }
+});
+const savePay = async () => {
+  if (!current) return;
+  const body = { amount_total: $("#dPayTotal").value === "" ? null : Number($("#dPayTotal").value), amount_paid: $("#dPayPaid").value === "" ? null : Number($("#dPayPaid").value) };
+  try { current = { ...current, ...(await api(`/api/events/${current.id}`, { method: "PATCH", body })) }; renderStudioDetail(); } catch (e) { toast(e.message); }
+};
+$("#dPayTotal").addEventListener("change", savePay);
+$("#dPayPaid").addEventListener("change", savePay);
+function renderChecklist(items) {
+  const done = items.filter((x) => x.done).length;
+  $("#dCheckCount").textContent = items.length ? `${done} / ${items.length}` : "";
+  $("#dCheckBar").style.width = items.length ? `${Math.round((done / items.length) * 100)}%` : "0%";
+  $("#dCheckList").innerHTML = items.length ? items.map((x) => `<li class="${x.done ? "done" : ""}">
+      <label class="wk-check"><input type="checkbox" data-ck="${x.id}" ${x.done ? "checked" : ""} /><span></span></label>
+      <span class="txt">${esc(x.text)}</span><button type="button" class="ck-del" data-ckdel="${x.id}" aria-label="${esc(t("delete"))}">✕</button></li>`).join("")
+    : `<li class="empty">${esc(t("c_empty"))}</li>`;
+}
+async function loadChecklist(id) {
+  $("#dCheckList").innerHTML = ""; $("#dCheckCount").textContent = ""; $("#dCheckBar").style.width = "0%";
+  fillTplSelect();
+  try { const items = await api(`/api/events/${id}/checklist`); if (current?.id === id) renderChecklist(items); } catch {}
+}
+function fillTplSelect() {
+  $("#dCheckTpl").innerHTML = `<option value="">${esc(t("c_tpl"))}</option>` + (state.templates || []).map((x) => `<option value="${x.id}">${esc(x.name)}</option>`).join("");
+}
+async function addCheck(body) {
+  if (!current) return;
+  try { renderChecklist(await api(`/api/events/${current.id}/checklist`, { method: "POST", body, silent: true })); } catch (e) { toast(e.message); }
+}
+$("#dCheckAddBtn").onclick = () => { const v = $("#dCheckInput").value.trim(); if (!v) return; $("#dCheckInput").value = ""; addCheck({ text: v }); };
+$("#dCheckInput").addEventListener("keydown", (ev) => { if (ev.key === "Enter" && !ev.isComposing) { ev.preventDefault(); $("#dCheckAddBtn").click(); } });
+$("#dCheckTpl").addEventListener("change", () => { const id = $("#dCheckTpl").value; $("#dCheckTpl").value = ""; if (id) addCheck({ templateId: Number(id) }); });
+$("#dCheckList").addEventListener("click", async (ev) => {
+  const box = ev.target.closest("[data-ck]"), del = ev.target.closest("[data-ckdel]");
+  if (box) {
+    ev.stopPropagation(); box.closest("li").classList.toggle("done", box.checked);
+    try { renderChecklist(await api(`/api/checklist/${box.dataset.ck}`, { method: "PATCH", body: { done: box.checked }, silent: true })); } catch (e) { toast(e.message); }
+  }
+  if (del) { try { renderChecklist(await api(`/api/checklist/${del.dataset.ckdel}`, { method: "DELETE", silent: true })); } catch (e) { toast(e.message); } }
+});
+
+// ---------- ✅ 清单范本（「标签」页） ----------
+async function renderTemplates() {
+  try { state.templates = await api("/api/templates"); } catch {}
+  fillTplSelect();
+  $("#tplList").innerHTML = (state.templates || []).map((x) => `<div class="tpl" data-tpl="${x.id}">
+      <input class="tpl-name" value="${esc(x.name)}" placeholder="${esc(t("tp_name_ph"))}" maxlength="60" />
+      <textarea class="tpl-items" rows="4" placeholder="${esc(t("tp_items_ph"))}">${esc((x.items || []).join("\n"))}</textarea>
+      <div class="actions"><button type="button" class="btn danger small" data-tpldel="${x.id}">${esc(t("delete"))}</button><span class="spacer"></span>
+        <button type="button" class="btn primary small" data-tplsave="${x.id}">${esc(t("save"))}</button></div></div>`).join("");
+}
+$("#tplAdd").onclick = async () => {
+  try { await api("/api/templates", { method: "POST", body: { name: "New template", items: [] } }); await renderTemplates(); } catch (e) { toast(e.message); }
+};
+$("#tplList").addEventListener("click", async (ev) => {
+  const sv = ev.target.closest("[data-tplsave]"), dl = ev.target.closest("[data-tpldel]");
+  if (sv) {
+    const box = sv.closest(".tpl");
+    try { await api(`/api/templates/${sv.dataset.tplsave}`, { method: "PUT", body: { name: box.querySelector(".tpl-name").value, items: box.querySelector(".tpl-items").value.split("\n") } }); await renderTemplates(); } catch (e) { toast(e.message); }
+  }
+  if (dl) {
+    const name = dl.closest(".tpl").querySelector(".tpl-name").value;
+    if (!(await askConfirm(t("tp_delete_confirm", { name }), t("delete")))) return;
+    try { await api(`/api/templates/${dl.dataset.tpldel}`, { method: "DELETE" }); await renderTemplates(); } catch (e) { toast(e.message); }
+  }
+});
+
 let started = false;
 async function startApp() {
   state.me = await api("/api/auth/me");
@@ -1524,7 +1768,8 @@ async function startApp() {
   state.labelNames = state.config.labelNames || {};
   $("#claudeTab").hidden = !state.config.claude; // 没有 API key 就不显示 Claude 页签
   $("#waTab").hidden = !state.me?.can_whatsapp; // WhatsApp 自动化：只有可以发 WhatsApp 的人看得到
-  state.view = "calendar"; // 登录后一定先看到日历
+  state.view = "home"; // 登录后先看到「今天」首页
+  api("/api/templates").then((x) => { state.templates = x; fillTplSelect(); }).catch(() => {});
   rerenderAll();
   if (!started) {
     started = true;

@@ -16,7 +16,7 @@
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
   <meta name="mobile-web-app-capable" content="yes" />
   <title>Shared Calendar</title>
-  <link rel="stylesheet" href="style.css?v=67" />
+  <link rel="stylesheet" href="style.css?v=68" />
 </head>
 <body class="locked">
   <!-- 登录 / 注册（打开 App 前） -->
@@ -58,7 +58,38 @@
 
   <main>
     <!-- 日历 -->
-    <section id="view-calendar" class="view active">
+    <!-- 今天（首页） -->
+    <section id="view-home" class="view">
+      <div class="hello"><h2 id="homeHello"></h2><p id="homeDate"></p></div>
+      <div class="home-stats">
+        <div class="stat"><b id="homeToday">0</b><span data-i18n="h_today"></span></div>
+        <div class="stat"><b id="homeWeek">0</b><span data-i18n="h_week"></span></div>
+        <div class="stat"><b id="homeDue" class="due">0</b><span data-i18n="h_due"></span></div>
+      </div>
+      <div id="homeNext" class="home-next" hidden></div>
+      <h4 class="home-sec" data-i18n="h_events"></h4>
+      <div id="homeList"></div>
+    </section>
+
+    <!-- 看板：预约流程 / 付款 / 工作量 -->
+    <section id="view-board" class="view">
+      <div class="seg" id="boardSeg">
+        <button type="button" data-seg="pipeline" class="on" data-i18n="b_pipeline"></button>
+        <button type="button" data-seg="payments" data-i18n="b_payments"></button>
+        <button type="button" data-seg="workload" data-i18n="b_workload"></button>
+      </div>
+      <div id="boardPipeline" class="pipeline"></div>
+      <div id="boardPayments" hidden>
+        <div class="period"><button type="button" class="icon-btn" id="payPrev">‹</button><b id="payMonth"></b><button type="button" class="icon-btn" id="payNext">›</button></div>
+        <div id="payBox"></div>
+      </div>
+      <div id="boardWorkload" hidden>
+        <div class="period"><button type="button" class="icon-btn" id="wlPrev">‹</button><b id="wlRange"></b><button type="button" class="icon-btn" id="wlNext">›</button></div>
+        <div id="wlBox" class="wl"></div>
+      </div>
+    </section>
+
+    <section id="view-calendar" class="view">
       <div class="weekdays" id="weekdays"></div>
       <div id="monthGrid" class="month-grid"></div>
       <div class="day-panel">
@@ -81,6 +112,11 @@
         <button class="btn primary" id="addMemberBtn" data-i18n="add_member"></button>
       </div>
       <ul id="memberList" class="list pad"></ul>
+
+      <h3 class="section-title" data-i18n="tp_title"></h3>
+      <p class="hint" data-i18n="tp_hint"></p>
+      <div id="tplList" class="tpl-list"></div>
+      <div class="toolbar"><span class="spacer"></span><button class="btn primary" id="tplAdd" data-i18n="tp_add"></button></div>
     </section>
 
     <!-- 这星期：摘要 + 任务清单 -->
@@ -282,7 +318,9 @@
   </main>
 
   <nav class="tabbar">
-    <button data-view="calendar" class="active"><span>📅</span><b data-i18n="tab_calendar"></b></button>
+    <button data-view="home" class="active"><span>🏠</span><b data-i18n="tab_home"></b></button>
+    <button data-view="calendar"><span>📅</span><b data-i18n="tab_calendar"></b></button>
+    <button data-view="board"><span>📋</span><b data-i18n="tab_board"></b></button>
     <button data-view="members"><span>🎨</span><b data-i18n="tab_members"></b></button>
     <button data-view="week" id="waTab" hidden><span>📲</span><b data-i18n="tab_week"></b></button>
     <button data-view="claude" id="claudeTab" hidden><span>💬</span><b data-i18n="tab_claude"></b></button>
@@ -328,6 +366,7 @@
           <div class="d-date" id="dEndBox"><small id="dEndYear"></small><b id="dEndDay"></b><span id="dEndTime"></span></div>
         </div>
       </div>
+      <div class="d-stage"><select id="dStage" data-i18n-aria="f_stage"></select></div>
       <ul class="d-rows">
         <li id="dMemberRow" class="editable" data-edit><span class="ico">👤</span><span id="dMember"></span></li>
         <li class="editable" data-edit><span class="ico">🔔</span><span id="dRemind"></span></li>
@@ -344,6 +383,21 @@
         </div></li>
         <li id="dGoogleRow"><span class="ico">📅</span><span id="dGoogle"></span></li>
       </ul>
+      <div class="sbox" id="dPayBox">
+        <h5><span data-i18n="p_title"></span><span id="dPayDue"></span></h5>
+        <div class="pay3">
+          <label><span data-i18n="p_total"></span><input id="dPayTotal" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0" /></label>
+          <label><span data-i18n="p_paid"></span><input id="dPayPaid" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0" /></label>
+          <div><span data-i18n="p_balance"></span><b id="dPayBal">—</b></div>
+        </div>
+      </div>
+      <div class="sbox" id="dCheckBox">
+        <h5><span data-i18n="c_title"></span><span id="dCheckCount"></span></h5>
+        <div class="bar2"><span id="dCheckBar"></span></div>
+        <ul id="dCheckList" class="cklist"></ul>
+        <div class="ck-add"><input id="dCheckInput" maxlength="200" data-i18n-placeholder="c_add_ph" /><button type="button" class="btn small" id="dCheckAddBtn" data-i18n="qa_add"></button>
+          <select id="dCheckTpl"></select></div>
+      </div>
       <div id="feed" class="feed"></div>
     </div>
     <form id="postForm" class="post-form">
@@ -387,6 +441,11 @@
         <div id="labelPicker" class="label-picker" role="radiogroup"></div>
       </div>
       <label class="check"><input type="checkbox" name="remind" id="remindCheck" /> <span data-i18n="f_remind"></span></label>
+      <label><span data-i18n="f_stage"></span><select name="stage" id="stageSelect"></select></label>
+      <div class="row">
+        <label><span data-i18n="p_total"></span><input name="amount_total" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0" /></label>
+        <label><span data-i18n="p_paid"></span><input name="amount_paid" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0" /></label>
+      </div>
       <label><span data-i18n="f_notes"></span><textarea name="notes" rows="3"></textarea></label>
 
       <div class="customer-box">
@@ -474,8 +533,8 @@
   </dialog>
 
   <div id="toast" class="toast" role="status"></div>
-  <script src="config.js?v=67"></script>
-  <script src="app.js?v=67" type="module"></script>
+  <script src="config.js?v=68"></script>
+  <script src="app.js?v=68" type="module"></script>
   <script>
     if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
   </script>
