@@ -265,7 +265,7 @@ export async function handleApi(req: Request): Promise<Response> {
         const force = !!(await body()).force; // 切换日历后的第一次完整读取：网页会连续呼叫直到 done
         later(ensureWatch(me.id, siteUrl)); // 确保 Google 有变更会马上通知（已开通就不做事）
         later(retryFailedSyncs(siteUrl, me.id)); // 之前同步失败的行程自动再试
-        return Response.json(await pullFromGoogle(me.id, siteUrl, { minSeconds: force ? 0 : 60 }));
+        return Response.json(await pullFromGoogle(me.id, siteUrl, { minSeconds: force ? 0 : 15 }));
       }
       if (seg[1] === "sync-all" && method === "POST") {
         if (!(await db.getGoogleLink(me.id))) throw new Error("你还没连接 Google 日历");

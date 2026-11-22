@@ -1,5 +1,5 @@
 // ===================== Shared Calendar / 共享日历 =====================
-import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=24";
+import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=25";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -1296,11 +1296,14 @@ async function startApp() {
     started = true;
     if (!state.config.claude) addMsg("assistant", t("claude_disabled"));
     setInterval(() => {
-      if (document.body.classList.contains("locked")) return;
-      loadMonth().catch(() => {});
+      if (document.body.classList.contains("locked") || document.hidden) return;
+      loadMonth().then(() => { // 打开着的日期视窗、这星期也一起更新
+        if ($("#dayDialog").open) openDayDialog();
+        if (state.view === "week") renderWeek();
+      }).catch(() => {});
       if (current && !$("#photoViewer").open && !$("#postInput").value) api(`/api/events/${current.id}`).then((e) => { current = e; renderDetail(); }).catch(() => {});
-    }, 30_000);
-    setInterval(() => { if (!document.hidden) pullGoogle(); }, 60_000); // 备用：Google 推送通知之外，每分钟检查一次
+    }, 10_000); // 每 10 秒刷新画面（别人改的、Google 改的很快就看到）
+    setInterval(() => { if (!document.hidden) pullGoogle(); }, 20_000); // 备用：Google 推送通知之外，每 20 秒检查一次
     document.addEventListener("visibilitychange", () => { if (!document.hidden) pullGoogle(); });
   }
   await loadMonth();
