@@ -1,5 +1,5 @@
 // ===================== Shared Calendar / 共享日历 =====================
-import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=78";
+import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=79";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -1829,9 +1829,11 @@ const curCalId = () => Number(store.get("cal") || 0) || null;
   const j = qs.get("join");
   if (j) { store.set("pendingJoin", j); qs.delete("join"); history.replaceState(null, "", location.pathname + (qs.toString() ? "?" + qs : "") + location.hash); }
 })();
-async function loadCalendars() {
+async function loadCalendars(ownFirst = false) {
   const r = await api("/api/calendars");
-  state.calendars = r.calendars || [];
+  state.calendars = (r.calendars || []).sort((a, b) => (b.role === "owner") - (a.role === "owner")); // 自己的日历排第一
+  const own = state.calendars.find((c) => c.role === "owner");
+  if (ownFirst && own) store.set("cal", String(own.id));
   if (!state.calendars.some((c) => c.id === curCalId())) store.set("cal", String(r.current));
   state.cal = state.calendars.find((c) => c.id === curCalId()) || state.calendars[0];
   document.body.classList.toggle("viewer", state.cal?.role === "viewer"); // 只能查看：隐藏新增 / 编辑 / 删除
@@ -1923,8 +1925,8 @@ $("#calLeaveBtn").onclick = async () => {
 let started = false;
 async function startApp() {
   state.me = await api("/api/auth/me");
-  await joinPending();   // 用邀请连结打开的 → 先加入那个日历
-  await loadCalendars(); // 我的日历清单 + 现在用哪一个
+  const joined = await joinPending();   // 用邀请连结打开的 → 先加入那个日历
+  await loadCalendars(!joined); // 我的日历清单；打开 App 时默认用自己的日历
   if (state.me.lang && state.me.lang !== getLang()) setLang(state.me.lang); // 帐号里存的语言，所有设备一致
   document.body.classList.remove("locked");
   [state.config, state.members] = await Promise.all([api("/api/config"), api("/api/members")]);
