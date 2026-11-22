@@ -14,7 +14,7 @@ const store = {
   get: (k) => { try { return localStorage.getItem(k); } catch { return null; } },
   set: (k, v) => { try { localStorage.setItem(k, v); } catch {} },
 };
-const DEFAULT_COLOR = "#4a7be0";
+const DEFAULT_COLOR = "#e8a33d";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // 密码：至少 6 个字，且至少 1 个特殊符号（不是字母、数字、空白）
 const passwordOk = (pw) => pw.length >= 6 && /[^\p{L}\p{N}\s]/u.test(pw);
