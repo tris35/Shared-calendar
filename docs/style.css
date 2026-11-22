@@ -500,11 +500,11 @@ body.locked > .topbar, body.locked > main, body.locked > .tabbar { display: none
 .quick-add input { flex: 1; min-width: 0; border: 0; background: none; padding: 8px 0; font-size: 15px; outline: none; }
 .quick-add .btn { flex: none; }
 
-/* 删除按钮 */
-.card-del { flex: none; margin-left: auto; width: 36px; height: 36px; border-radius: 10px; border: 0; background: rgba(255,255,255,.55); cursor: pointer; font-size: 16px; opacity: .75; transition: opacity .15s, background .15s; }
-.card-del:hover, .card-del:focus-visible { opacity: 1; background: #fde2df; }
-.icon-btn.trash { font-size: 18px; }
-.icon-btn.trash:hover { background: #fde2df; }
+/* 删除按钮：红色长方形 + 「DELETE」字 */
+.card-del, .del-btn { flex: none; margin-left: auto; border: 0; border-radius: 8px; background: #d64545; color: #fff;
+  font-size: 12px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; padding: 8px 12px; cursor: pointer; transition: background .15s; }
+.card-del:hover, .card-del:focus-visible, .del-btn:hover, .del-btn:focus-visible { background: #b83232; }
+.del-btn { margin-right: 4px; }
 .menu-wrap { display: flex; align-items: center; gap: 2px; }
 
 /* 选中那天：「＋ 新增行程」按钮 */
