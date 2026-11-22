@@ -1,5 +1,5 @@
 // ===================== Shared Calendar / 共享日历 =====================
-import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=66";
+import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=67";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -469,6 +469,7 @@ function logText(f) {
   if (f.body === "undone") return t("log_undone");
   if (f.body.startsWith("updated:")) {
     const fields = f.body.slice(8).split(",").filter(Boolean).map((k) => t(`field_${k}`));
+    if (!fields.length) return t("log_updated_generic"); // 旧的空白纪录
     return t("log_updated", { fields: fields.join(t("list_sep")) });
   }
   return f.body; // 旧资料

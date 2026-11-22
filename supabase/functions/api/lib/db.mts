@@ -48,12 +48,16 @@ function outEvent(e: any) {
     customer_auto: e.customer_auto === false ? 0 : 1, customer_sent_at: iso(e.customer_sent_at), done_at: iso(e.done_at),
     color: e.label && LABELS[e.label] ? LABELS[e.label].hex : null,
     photo_count: Number(e.photo_count ?? 0), memo_count: Number(e.memo_count ?? 0),
+    amount_total: e.amount_total == null ? null : Number(e.amount_total), amount_paid: e.amount_paid == null ? null : Number(e.amount_paid),
+    check_total: Number(e.check_total ?? 0), check_done: Number(e.check_done ?? 0),
   };
 }
 const outRow = (r: any) => (r ? { ...r, created_at: iso(r.created_at) } : r);
 
 // ---------- 行程 ----------
 const EVENT_COLS = `e.*, m.name AS member_name, m.color AS member_color, m.emoji AS member_emoji,
+  (SELECT COUNT(*) FROM event_checklist c WHERE c.event_id = e.id)::int AS check_total,
+  (SELECT COUNT(*) FROM event_checklist c WHERE c.event_id = e.id AND c.done)::int AS check_done,
   (SELECT COUNT(*) FROM photos p WHERE p.event_id = e.id)::int AS photo_count,
   (SELECT COUNT(*) FROM comments cm WHERE cm.event_id = e.id AND cm.photo_id IS NULL)::int AS memo_count`;
 
@@ -85,10 +89,11 @@ export async function createEvent(e: any, author?: string | null) {
   const start = toIso(e.start), end = toIso(e.end);
   if (!start) throw new Error("请填写开始时间");
   if (end && end < start) throw new Error("结束时间不能早于开始时间");
-  const [r] = await sql`INSERT INTO events (title, start, "end", all_day, notes, label, member_id, remind, created_by, customer_phone, customer_note, customer_auto, customer_name, customer_send_at)
+  const [r] = await sql`INSERT INTO events (title, start, "end", all_day, notes, label, member_id, remind, created_by, customer_phone, customer_note, customer_auto, customer_name, customer_send_at, stage, amount_total, amount_paid)
     VALUES (${title}, ${start}, ${end}, ${!!e.all_day}, ${clean(e.notes, 5000)}, ${checkLabel(e.label)},
             ${e.member_id ?? null}, ${e.remind === undefined ? true : !!e.remind}, ${clean(author, 60)},
-            ${clean(e.customer_phone, 40)}, ${clean(e.customer_note, 2000)}, ${e.customer_auto === undefined ? true : !!e.customer_auto}, ${clean(e.customer_name, 80)}, ${e.customer_send_at ? toIso(e.customer_send_at) : null})
+            ${clean(e.customer_phone, 40)}, ${clean(e.customer_note, 2000)}, ${e.customer_auto === undefined ? true : !!e.customer_auto}, ${clean(e.customer_name, 80)}, ${e.customer_send_at ? toIso(e.customer_send_at) : null},
+            ${cleanStage(e.stage)}, ${money(e.amount_total)}, ${money(e.amount_paid)})
     RETURNING id`;
   await logEvent(r.id, author, "created");
   return getEvent(r.id);
@@ -96,7 +101,11 @@ export async function createEvent(e: any, author?: string | null) {
 
 // 变更纪录存代码（"updated:title,time"），显示时依各人的语言翻译
 const FIELD_CODES: Record<string, string> = { title: "title", start: "time", end: "time", all_day: "time", notes: "notes", label: "label", member_id: "member", remind: "remind",
-  customer_phone: "customer", customer_note: "customer", customer_auto: "customer_auto" };
+  customer_phone: "customer", customer_note: "customer", customer_auto: "customer_auto",
+  stage: "stage", amount_total: "payment", amount_paid: "payment", customer_name: "customer", customer_send_at: "customer" };
+export const STAGES = ["enquiry", "booked", "shoot", "editing", "delivered"];
+const cleanStage = (v: any) => (STAGES.includes(String(v)) ? String(v) : "booked");
+const money = (v: any) => (v == null || v === "" || isNaN(Number(v)) ? null : Math.round(Number(v) * 100) / 100);
 
 /** WhatsApp Schedule：把已发送的讯息从清单拿掉 */
 export async function hideCustomerMessage(id: number) {
@@ -127,6 +136,9 @@ export async function updateEvent(id: number, e: any, author?: string | null) {
     customer_phone: e.customer_phone !== undefined ? clean(e.customer_phone, 40) : old.customer_phone,
     customer_name: e.customer_name !== undefined ? clean(e.customer_name, 80) : old.customer_name,
     customer_send_at: e.customer_send_at !== undefined ? (e.customer_send_at ? toIso(e.customer_send_at) : null) : iso(old.customer_send_at),
+    stage: e.stage !== undefined ? cleanStage(e.stage) : old.stage,
+    amount_total: e.amount_total !== undefined ? money(e.amount_total) : money(old.amount_total),
+    amount_paid: e.amount_paid !== undefined ? money(e.amount_paid) : money(old.amount_paid),
     customer_note: e.customer_note !== undefined ? clean(e.customer_note, 2000) : old.customer_note,
     customer_auto: e.customer_auto !== undefined ? !!e.customer_auto : old.customer_auto !== 0,
   };
@@ -135,13 +147,16 @@ export async function updateEvent(id: number, e: any, author?: string | null) {
   if (next.end && next.end < next.start) throw new Error("结束时间不能早于开始时间");
   await sql`UPDATE events SET title = ${next.title}, start = ${next.start}, "end" = ${next.end}, all_day = ${next.all_day},
     notes = ${next.notes}, label = ${next.label}, member_id = ${next.member_id}, remind = ${next.remind},
-    customer_phone = ${next.customer_phone}, customer_note = ${next.customer_note}, customer_auto = ${next.customer_auto}, customer_name = ${next.customer_name}, customer_send_at = ${next.customer_send_at} WHERE id = ${id}`;
+    customer_phone = ${next.customer_phone}, customer_note = ${next.customer_note}, customer_auto = ${next.customer_auto}, customer_name = ${next.customer_name}, customer_send_at = ${next.customer_send_at},
+    stage = ${next.stage}, amount_total = ${next.amount_total}, amount_paid = ${next.amount_paid} WHERE id = ${id}`;
   // 变更纪录：「修改了标题、时间」
   const prev: any = { ...old, all_day: !!old.all_day, remind: !!old.remind, customer_auto: old.customer_auto !== 0 };
   // 电话、讯息或日期改了 → 之后会再发一次新的
   if (next.customer_phone !== old.customer_phone || next.customer_note !== old.customer_note || next.start !== old.start || next.customer_send_at !== iso(old.customer_send_at) || (next.customer_auto && !prev.customer_auto))
     await sql`UPDATE events SET customer_sent_at = NULL, customer_error = NULL WHERE id = ${id}`;
-  const changed = [...new Set(Object.keys(next).filter((k) => (next[k] ?? null) !== (prev[k] ?? null)).map((k) => FIELD_CODES[k]))];
+  // 用一样的格式比较（日期、金额），只记录看得懂的栏位；没变就不记录
+  const norm = (k: string, v: any) => (v == null || v === "" ? null : k === "customer_send_at" ? iso(v) : k === "amount_total" || k === "amount_paid" ? money(v) : v);
+  const changed = [...new Set(Object.keys(next).filter((k) => norm(k, next[k]) !== norm(k, prev[k])).map((k) => FIELD_CODES[k]).filter(Boolean))];
   if (changed.length) await logEvent(id, author, `updated:${changed.join(",")}`);
   return getEvent(id);
 }
@@ -443,4 +458,41 @@ export async function getKv(key: string) {
 }
 export async function setKv(key: string, value: any) {
   await q(`INSERT INTO kv (key, value) VALUES ($1, $2::jsonb) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`, [key, JSON.stringify(value)]);
+}
+
+
+// ---------- 每个行程的清单 ----------
+export async function listChecklist(eventId: number) {
+  return sql`SELECT id, text, done, done_by FROM event_checklist WHERE event_id = ${eventId} ORDER BY position, id`;
+}
+export async function addChecklistItems(eventId: number, texts: string[]) {
+  const [{ n }] = await sql`SELECT COALESCE(MAX(position), 0)::int AS n FROM event_checklist WHERE event_id = ${eventId}`;
+  let pos = n;
+  for (const t of texts.map((x) => clean(x, 200)).filter(Boolean)) {
+    pos++;
+    await sql`INSERT INTO event_checklist (event_id, text, position) VALUES (${eventId}, ${t}, ${pos})`;
+  }
+}
+export async function setChecklistDone(itemId: number, done: boolean, who: string | null) {
+  return (await sql`UPDATE event_checklist SET done = ${done}, done_by = ${done ? who : null} WHERE id = ${itemId} RETURNING event_id`)[0] ?? null;
+}
+export async function deleteChecklistItem(itemId: number) {
+  return (await sql`DELETE FROM event_checklist WHERE id = ${itemId} RETURNING event_id`)[0] ?? null;
+}
+// 清单范本
+export async function listTemplates() {
+  return sql`SELECT id, name, items FROM checklist_templates ORDER BY name`;
+}
+export async function saveTemplate(t: { id?: number; name: string; items: string[] }) {
+  const name = clean(t.name, 60);
+  if (!name) throw new Error("请填写范本名称");
+  const items = (t.items || []).map((x) => clean(x, 200)).filter(Boolean).slice(0, 40) as string[];
+  if (t.id) return (await sql`UPDATE checklist_templates SET name = ${name}, items = ${items} WHERE id = ${t.id} RETURNING id, name, items`)[0] ?? null;
+  return (await sql`INSERT INTO checklist_templates (name, items) VALUES (${name}, ${items}) RETURNING id, name, items`)[0];
+}
+export async function deleteTemplate(id: number) {
+  return (await sql`DELETE FROM checklist_templates WHERE id = ${id} RETURNING id`).length > 0;
+}
+export async function getTemplate(id: number) {
+  return (await sql`SELECT id, name, items FROM checklist_templates WHERE id = ${id}`)[0] ?? null;
 }

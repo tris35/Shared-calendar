@@ -137,6 +137,15 @@ export async function handleApi(req: Request): Promise<Response> {
         if (method === "GET") return Response.json(await db.listEvents(Object.fromEntries(url.searchParams)));
         if (method === "POST") { const e = await db.createEvent(await eventInput(), who); sync(e.id); return Response.json(e); }
       }
+      // 清单：列出 / 新增（文字或范本）
+      if (seg[2] === "checklist" && method === "GET") return Response.json(await db.listChecklist(id));
+      if (seg[2] === "checklist" && method === "POST") {
+        if (!(await db.getEvent(id))) notFound();
+        const b = await body();
+        const items = b.templateId ? ((await db.getTemplate(Number(b.templateId)))?.items || []) : [String(b.text || "")];
+        await db.addChecklistItems(id, items);
+        return Response.json(await db.listChecklist(id));
+      }
       // WhatsApp Schedule：已发送的讯息从清单删掉
       if (seg[2] === "wa-hide" && method === "POST") {
         if (!canWhatsApp(me)) throw new HttpError(403, "没有权限");
@@ -230,6 +239,20 @@ export async function handleApi(req: Request): Promise<Response> {
         await saveSettings({ digest });
         return Response.json({ ...digest, preview: await buildDigest(mode === "weekly" ? "weekly" : "daily", new Date(), date || undefined) });
       }
+    }
+
+    // ---------- 清单项目：打勾 / 删除 ----------
+    if (r === "checklist" && seg[1]) {
+      const itemId = Number(seg[1]);
+      if (method === "PATCH") { const r2 = await db.setChecklistDone(itemId, !!(await body()).done, who); if (!r2) notFound(); return Response.json(await db.listChecklist(r2.event_id)); }
+      if (method === "DELETE") { const r2 = await db.deleteChecklistItem(itemId); if (!r2) notFound(); return Response.json(await db.listChecklist(r2.event_id)); }
+    }
+    // ---------- 清单范本（所有人共用） ----------
+    if (r === "templates") {
+      if (!seg[1] && method === "GET") return Response.json(await db.listTemplates());
+      if (!seg[1] && method === "POST") return Response.json(await db.saveTemplate(await body()));
+      if (seg[1] && method === "PUT") { const t2 = await db.saveTemplate({ ...(await body()), id: Number(seg[1]) }); if (!t2) notFound(); return Response.json(t2); }
+      if (seg[1] && method === "DELETE") return Response.json({ ok: await db.deleteTemplate(Number(seg[1])) });
     }
 
     // ---------- 颜色标签的名称（所有人共用） ----------
