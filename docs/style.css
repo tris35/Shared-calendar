@@ -673,3 +673,6 @@ button:active:not(:disabled), .item:active, .wk-item:active { transform: scale(.
 
 /* WhatsApp 自动化设定：浅蓝色（比预览的绿色更浅） */
 #waAuto { background: #f0f6ff; border-color: #c9dbf7; }
+
+/* WhatsApp 自动化设定：浅灰色 */
+#waAuto { background: #f3f4f6; border-color: #d6d9de; }
