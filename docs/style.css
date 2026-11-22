@@ -631,3 +631,9 @@ button:active:not(:disabled), .item:active, .wk-item:active { transform: scale(.
 /* WhatsApp 自动化设定（这星期页签） */
 .wa-auto h4 { margin: 10px 0 0; font-size: 14px; }
 .wa-auto #waAutoSave { align-self: stretch; margin-top: 8px; }
+
+/* 设置页：框线粗一点、清楚一点 */
+#view-settings .card { border: 2px solid var(--grid); }
+#view-settings .card h3 { font-weight: 800; }
+#view-settings .card h4 { font-weight: 800; padding-top: 10px; border-top: 1.5px solid var(--grid); }
+#view-settings input, #view-settings select, #view-settings textarea { border-width: 1.5px; border-color: var(--grid); }
