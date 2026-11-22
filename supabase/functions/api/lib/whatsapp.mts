@@ -70,6 +70,25 @@ export async function waUsage() {
   return { sent, limit, full: limit != null && sent >= limit };
 }
 
+/** 普通文字讯息（保留换行、空行）：只有客户 24 小时内传过讯息给你时 WhatsApp 才允许 */
+async function sendPlainText(to: string, text: string) {
+  const c = waConfig();
+  if (!c) throw new Error("WhatsApp 还没设定");
+  const res = await fetch(`${c.base}/${c.version}/${c.phoneId}/messages`, {
+    method: "POST",
+    headers: { ...c.headers, "Content-Type": "application/json" } as unknown as Record<string, string>,
+    body: JSON.stringify({ messaging_product: "whatsapp", to, type: "text", text: { body: text.slice(0, 4000), preview_url: false } }),
+  });
+  const data: any = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error?.message || String(res.status));
+  return data?.messages?.[0]?.id as string | undefined;
+}
+/** 给客户：先试普通文字（有空行），不行（超过 24 小时）就用核准的模板（一行，用 | 分开） */
+async function sendCustomerText(to: string, e: any) {
+  const full = [e.title || "", String(e.customer_note || "").replace(/\r/g, "")].filter((x) => x.trim()).join("\n\n");
+  try { return await sendPlainText(to, full); }
+  catch { return await sendTemplate(to, await customerText(e)); }
+}
 async function sendTemplate(to: string, text: string) {
   const c = waConfig();
   if (!c) throw new Error("WhatsApp 还没设定");
@@ -107,7 +126,7 @@ export async function sendCustomerMessage(eventId: number, opts: { force?: boole
   }
   if (!(await db.claimCustomerSend(eventId, !!opts.force))) return { skipped: true };
   try {
-    await sendTemplate(to, await customerText(e));
+    await sendCustomerText(to, e);
     await db.recordWaSent(eventId);
     await db.logEvent(eventId, opts.author ?? null, "customer_sent");
     return { ok: true };

@@ -16,7 +16,7 @@
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
   <meta name="mobile-web-app-capable" content="yes" />
   <title>Shared Calendar</title>
-  <link rel="stylesheet" href="style.css?v=56" />
+  <link rel="stylesheet" href="style.css?v=57" />
 </head>
 <body class="locked">
   <!-- 登录 / 注册（打开 App 前） -->
@@ -108,6 +108,8 @@
           <h4 data-i18n="dg_preview"></h4>
           <p class="hint" style="padding:0" data-i18n="dg_prev_customer"></p>
           <pre id="wtPreview" class="digest-preview"></pre>
+          <p class="hint" style="padding:0" data-i18n="wt_prev_fallback"></p>
+          <pre id="wtPreview2" class="digest-preview"></pre>
           <button type="button" class="btn primary" id="waAutoSave" data-i18n="save"></button>
         </div>
       </section>
@@ -449,8 +451,8 @@
   </dialog>
 
   <div id="toast" class="toast" role="status"></div>
-  <script src="config.js?v=56"></script>
-  <script src="app.js?v=56" type="module"></script>
+  <script src="config.js?v=57"></script>
+  <script src="app.js?v=57" type="module"></script>
   <script>
     if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
   </script>

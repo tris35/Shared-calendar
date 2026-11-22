@@ -1,5 +1,5 @@
 // ===================== Shared Calendar / 共享日历 =====================
-import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=56";
+import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=57";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -1197,7 +1197,10 @@ let waPrevTimer = null;
 function updateWaPreview() {
   // 给客户：就是这段文字（WhatsApp 会把换行变成「 | 」）
   // WhatsApp 商业讯息不能换行：空行拿掉，每一行用「 | 」接起来（和真正发出去的一样）
-  $("#wtPreview").textContent = waFlatten(t("wt_sample_title") + "\n" + $("#wtText").value) || "—"; // 行程标题在最上面
+  // 预览：保留空行（客户 24 小时内传过讯息时就会这样收到）；下面再显示其他情况的样子
+  const raw = $("#wtText").value.replace(/\r/g, "").trim();
+  $("#wtPreview").textContent = raw ? `${t("wt_sample_title")}\n\n${raw}` : "—";
+  $("#wtPreview2").textContent = waFlatten(t("wt_sample_title") + "\n" + $("#wtText").value) || "—";
   // 给自己 / 员工的行程摘要：用目前选的「每天 / 每星期一」从伺服器算出来（还没保存）
   clearTimeout(waPrevTimer);
   waPrevTimer = setTimeout(async () => {
