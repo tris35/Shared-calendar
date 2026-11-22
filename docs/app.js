@@ -14,7 +14,7 @@ const store = {
   get: (k) => { try { return localStorage.getItem(k); } catch { return null; } },
   set: (k, v) => { try { localStorage.setItem(k, v); } catch {} },
 };
-const DEFAULT_COLOR = "#4f9d69";
+const DEFAULT_COLOR = "#4a7be0";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // 密码：至少 6 个字，且至少 1 个特殊符号（不是字母、数字、空白）
 const passwordOk = (pw) => pw.length >= 6 && /[^\p{L}\p{N}\s]/u.test(pw);
@@ -81,7 +81,7 @@ function enterToSend(input, send) {
 function avatar(name) {
   const n = name || "?";
   const m = state.members.find((x) => x.name === n);
-  if (m?.emoji) return `<span class="avatar emoji" style="--ring:${esc(m.color || "#4f9d69")}">${esc(m.emoji)}</span>`;
+  if (m?.emoji) return `<span class="avatar emoji" style="--ring:${esc(m.color || "#4a7be0")}">${esc(m.emoji)}</span>`;
   let color = m?.color;
   if (!color) { let h = 0; for (const ch of n) h = (h * 31 + ch.charCodeAt(0)) % 360; color = n === "Claude" ? "#c47a3d" : `hsl(${h} 45% 48%)`; }
   return `<span class="avatar" style="background:${esc(color)}">${esc(n.slice(0, 1))}</span>`;

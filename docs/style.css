@@ -1,30 +1,30 @@
 :root {
-  --bg: #eaf5ec;          /* 浅薄荷绿背景 */
+  --bg: #f3f8ff;          /* 浅蓝背景 */
   --surface: #ffffff;
-  --surface-2: #e4f2e7;
-  --text: #1f2a22;
-  --muted: #5f7566;
-  --border: #cfe3d3;
-  --accent: #3f9a62;
+  --surface-2: #eaf1ff;
+  --text: #1d2740;
+  --muted: #5d6b85;
+  --border: #d6e6ff;
+  --accent: #4a7be0;      /* 按钮 / 今天：深一点的蓝，白字看得清楚 */
   --accent-text: #ffffff;
   --danger: #c4483b;
-  --today: #d4efdb;       /* 今天：浅绿 */
+  --today: #d6e6ff;
   --sun: #d0473a;
-  --sat: #3566b0;
-  --shadow: 0 6px 24px rgba(20, 60, 30, .12);
+  --sat: #6a55d0;
+  --shadow: 0 6px 24px rgba(30, 60, 120, .12);
   /* 月历格子 */
-  --cell: #f6fbf3;        /* 平日：奶油白带一点绿 */
-  --cell-sun: #fbe0dc;    /* 星期日：粉红 */
-  --cell-sat: #dce8fa;    /* 星期六：浅蓝 */
-  --cell-other: #e9efe7;  /* 上/下个月 */
-  --grid: #cfe3d3;
-  --head: linear-gradient(135deg, #d7f0de 0%, #eaf6e6 55%, #f6f1df 100%);
-  --weekdays: #def0e3;
+  --cell: #f8fbff;        /* 平日：很浅的蓝 */
+  --cell-sun: #fde2ef;    /* 星期日：粉红 */
+  --cell-sat: #e9e0ff;    /* 星期六：薰衣草紫 */
+  --cell-other: #e9eef7;  /* 上/下个月 */
+  --grid: #d6e6ff;
+  --head: linear-gradient(135deg, #d6e6ff 0%, #e9e0ff 55%, #fff3fb 100%);
+  --weekdays: #e3edff;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #121614; --surface: #1b211d; --surface-2: #232b26; --text: #e6ece7; --muted: #94a199;
-    --border: #2e3832; --accent: #6cbf86; --accent-text: #0e1a12; --danger: #e5776b; --today: #213328;
+    --border: #2e3832; --accent: #8fb3ff; --accent-text: #0e1626; --danger: #e5776b; --today: #213328;
     --sun: #e5776b; --sat: #7ea6e0; --shadow: 0 6px 24px rgba(0, 0, 0, .5);
     --cell: #1b211d; --cell-sun: #241c1c; --cell-sat: #1a2029; --cell-other: #171c19; --grid: #2e3832;
     --head: #1b211d; --weekdays: #1b211d;
@@ -32,7 +32,7 @@
 }
 :root[data-theme="dark"] {
   --bg: #121614; --surface: #1b211d; --surface-2: #232b26; --text: #e6ece7; --muted: #94a199;
-  --border: #2e3832; --accent: #6cbf86; --accent-text: #0e1a12; --danger: #e5776b; --today: #213328;
+  --border: #2e3832; --accent: #8fb3ff; --accent-text: #0e1626; --danger: #e5776b; --today: #213328;
   --sun: #e5776b; --sat: #7ea6e0; --shadow: 0 6px 24px rgba(0, 0, 0, .5);
     --cell: #1b211d; --cell-sun: #241c1c; --cell-sat: #1a2029; --cell-other: #171c19; --grid: #2e3832;
     --head: #1b211d; --weekdays: #1b211d;
