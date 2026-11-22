@@ -16,7 +16,7 @@
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
   <meta name="mobile-web-app-capable" content="yes" />
   <title>Shared Calendar</title>
-  <link rel="stylesheet" href="style.css?v=79" />
+  <link rel="stylesheet" href="style.css?v=80" />
 </head>
 <body class="locked">
   <!-- 登录 / 注册（打开 App 前） -->
@@ -212,6 +212,23 @@
     <!-- 设置 -->
     <section id="view-settings" class="view">
       <div class="settings">
+        <section class="card">
+          <h3 data-i18n="acct_title"></h3>
+          <div class="acct-row"><span class="acct-label" data-i18n="acct_gmail"></span><span id="acctEmail"></span></div>
+          <div class="composer">
+            <input id="acctName" maxlength="40" data-i18n-aria="my_name" />
+            <button type="button" class="btn small" id="acctNameSave" data-i18n="rename_btn"></button>
+          </div>
+          <details class="howto">
+            <summary data-i18n="change_pw"></summary>
+            <form id="pwForm" class="pw-form">
+              <input id="pwOld" type="password" autocomplete="current-password" data-i18n-placeholder="pw_old" />
+              <input id="pwNew" type="password" autocomplete="new-password" data-i18n-placeholder="pw_new" />
+              <p class="pw-rule" data-i18n="pw_rule"></p>
+              <button type="submit" class="btn small primary" data-i18n="pw_change_btn"></button>
+            </form>
+          </details>
+        </section>
         <!-- 日历：切换、改名、成员、邀请连结 -->
         <section class="card cal-card" id="calCard">
           <h3 data-i18n="cl_title"></h3>
@@ -233,24 +250,6 @@
           <ul id="calPeople" class="cal-people"></ul>
           <div class="actions"><span class="spacer"></span>
             <button type="button" class="btn danger small" id="calLeaveBtn" data-i18n="cl_leave"></button></div>
-        </section>
-        <section class="card">
-          <h3 data-i18n="acct_title"></h3>
-          <div class="acct-row"><span class="acct-label" data-i18n="acct_gmail"></span><span id="acctEmail"></span></div>
-          <div class="composer">
-            <input id="acctName" maxlength="40" data-i18n-aria="my_name" />
-            <button type="button" class="btn small" id="acctNameSave" data-i18n="rename_btn"></button>
-          </div>
-          <details class="howto">
-            <summary data-i18n="change_pw"></summary>
-            <form id="pwForm" class="pw-form">
-              <input id="pwOld" type="password" autocomplete="current-password" data-i18n-placeholder="pw_old" />
-              <input id="pwNew" type="password" autocomplete="new-password" data-i18n-placeholder="pw_new" />
-              <p class="pw-rule" data-i18n="pw_rule"></p>
-              <button type="submit" class="btn small primary" data-i18n="pw_change_btn"></button>
-            </form>
-          </details>
-          <div class="actions"><span class="spacer"></span><button type="button" class="btn danger" id="logoutBtn" data-i18n="logout"></button></div>
         </section>
 
         <section class="card">
@@ -333,6 +332,7 @@
             <button type="button" class="btn primary small" id="tzSaveBtn" data-i18n="save"></button>
           </div>
         </section>
+        <div class="actions logout-row"><button type="button" class="btn danger" id="logoutBtn" data-i18n="logout"></button></div>
       </div>
     </section>
   </main>
@@ -553,8 +553,8 @@
   </dialog>
 
   <div id="toast" class="toast" role="status"></div>
-  <script src="config.js?v=79"></script>
-  <script src="app.js?v=79" type="module"></script>
+  <script src="config.js?v=80"></script>
+  <script src="app.js?v=80" type="module"></script>
   <script>
     if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
   </script>
