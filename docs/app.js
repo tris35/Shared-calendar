@@ -1,5 +1,5 @@
 // ===================== Shared Calendar / 共享日历 =====================
-import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=35";
+import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=36";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -1132,9 +1132,8 @@ $("#wtSave").onclick = async () => {
 async function loadAdmins() {
   try {
     const a = await api("/api/admin/admins");
-    $("#admFixed").textContent = a.fixed.length ? t("adm_fixed", { list: a.fixed.join(", ") }) : "";
     $("#admEmails").value = (a.extra || []).join(", ");
-  } catch (e) { $("#admFixed").textContent = e.message; }
+  } catch {}
 }
 $("#admSave").onclick = async () => {
   try {
