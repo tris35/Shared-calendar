@@ -1,5 +1,5 @@
 // ===================== Shared Calendar / 共享日历 =====================
-import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=38";
+import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=39";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -1093,7 +1093,32 @@ async function renderWeek() {
     </section>`;
   }
   $("#weekDays").innerHTML = html;
+  renderWeekWa(evs);
 }
+// 这星期的 WhatsApp 客户讯息：谁、什么时候发、发了没有
+function renderWeekWa(evs) {
+  const box = $("#weekWa");
+  const list = evs.filter((e) => e.customer_phone && e.customer_note);
+  box.hidden = !state.me?.can_whatsapp;
+  if (box.hidden) return;
+  const sendAt = (e) => { const d = new Date(e.start); d.setDate(d.getDate() - 1); d.setHours(16, 0, 0, 0); return d; }; // 前一天下午 4 点
+  const status = (e) => {
+    if (e.customer_sent_at) return ["sent", t("ww_sent", { time: fmtDateTime(e.customer_sent_at) })];
+    if (e.customer_error) return ["fail", t("ww_failed")];
+    if (e.customer_auto === 0) return ["off", t("ww_off")];
+    if (sendAt(e) < new Date()) return ["off", t("ww_missed")];
+    return ["wait", t("ww_will", { time: fmtDateTime(sendAt(e).toISOString()) })];
+  };
+  box.innerHTML = `<h3>${esc(t("ww_title"))}</h3>` + (list.length ? `<ul>${list.map((e) => {
+    const [cls, txt] = status(e);
+    return `<li class="ww-item" data-id="${e.id}">
+      <div class="ww-main"><b>${esc(e.customer_name || e.customer_phone)}</b>${e.customer_name ? ` <span class="muted">${esc(e.customer_phone)}</span>` : ""}
+        <div class="s">${esc(e.title)} · ${esc(new Date(e.start).toLocaleDateString(locale(), { weekday: "short", day: "numeric", month: "short" }))}</div>
+        <div class="ww-note">${esc(e.customer_note)}</div></div>
+      <span class="ww-status ${cls}">${esc(txt)}</span></li>`;
+  }).join("")}</ul>` : `<p class="hint">${esc(t("ww_none"))}</p>`);
+}
+$("#weekWa").addEventListener("click", (ev) => { const li = ev.target.closest(".ww-item"); if (li) openDetail(Number(li.dataset.id)); });
 $("#weekPrev").onclick = () => { state.weekOffset--; renderWeek(); };
 $("#weekNext").onclick = () => { state.weekOffset++; renderWeek(); };
 $("#weekFilters").addEventListener("click", (ev) => {
