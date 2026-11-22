@@ -33,10 +33,11 @@ const clean = (s: any, max = 2000) => (s == null ? null : String(s).trim().slice
 // Google 日历的 11 种活动颜色（label 存 Google 的 colorId）
 // App 里显示的是柔和的粉彩色（由浅到深）；Google 日历上仍是 Google 自己的 11 种颜色
 export const LABELS: Record<string, { name: string; hex: string }> = {
-  "6": { name: "橘子", hex: "#ffd6c9" }, "4": { name: "火鹤粉", hex: "#ffc3b2" }, "11": { name: "番茄红", hex: "#f49a82" },
-  "5": { name: "香蕉黄", hex: "#f6d6e8" }, "2": { name: "鼠尾草", hex: "#cff4e2" }, "10": { name: "罗勒绿", hex: "#8fd3b4" },
-  "7": { name: "孔雀蓝", hex: "#d6e6ff" }, "9": { name: "蓝莓", hex: "#8fb3ff" }, "1": { name: "薰衣草", hex: "#e9e0ff" },
-  "3": { name: "葡萄紫", hex: "#c3b1f5" }, "8": { name: "石墨灰", hex: "#b8c2d6" },
+  // 每个颜色只有一个（黄、橘、粉、绿、天蓝、薰衣草、青、蓝、红、紫、灰）
+  "5": { name: "香蕉黄", hex: "#ffe8a3" }, "6": { name: "橘子", hex: "#ffcfb5" }, "4": { name: "火鹤粉", hex: "#f6c9e3" },
+  "2": { name: "鼠尾草", hex: "#bfe9cf" }, "7": { name: "孔雀蓝", hex: "#bfe6fb" }, "1": { name: "薰衣草", hex: "#ddd3ff" },
+  "10": { name: "罗勒绿", hex: "#97d9d1" }, "9": { name: "蓝莓", hex: "#a3bfff" }, "11": { name: "番茄红", hex: "#f39a9a" },
+  "3": { name: "葡萄紫", hex: "#c7a3ee" }, "8": { name: "石墨灰", hex: "#b9c1d1" },
 };
 
 function outEvent(e: any) {

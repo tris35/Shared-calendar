@@ -86,8 +86,8 @@ function avatar(name) {
   if (!color) { let h = 0; for (const ch of n) h = (h * 31 + ch.charCodeAt(0)) % 360; color = n === "Claude" ? "#c47a3d" : `hsl(${h} 45% 48%)`; }
   return `<span class="avatar" style="background:${esc(color)}">${esc(n.slice(0, 1))}</span>`;
 }
-// 颜色标签的显示顺序：同一色系由浅到深（桃 → 粉 → 绿 → 蓝 → 紫 → 灰）
-const LABEL_ORDER = ["6", "4", "11", "5", "2", "10", "7", "9", "1", "3", "8"];
+// 颜色标签的显示顺序：由浅到深，每个颜色只有一个
+const LABEL_ORDER = ["5", "6", "4", "2", "7", "1", "10", "9", "11", "3", "8"];
 const orderedLabels = () => LABEL_ORDER.filter((id) => state.labels[id]).map((id) => [id, state.labels[id]]);
 const labelName = (id) => state.labelNames?.[id] || t(`label_${id}`);
 const author = (n) => n || t("anonymous");
