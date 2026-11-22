@@ -697,6 +697,9 @@ async function renderSettings() {
     $("#gRedirectUri").textContent = state.config.googleRedirectUri || `${location.origin}/api/google/callback`;
     const ready = !!state.config.googleLoginReady;
     $("#gConnected").hidden = !me.google;
+    // 已连接：显示「同步的 Google 日历」选单，读取这个帐号的日历
+    $(".cal-pick").hidden = !me.google;
+    if (me.google && !$("#syncCalBtn").disabled) loadSyncCalendars();
     $("#gConnectForm").hidden = !!me.google;          // 没连接时一定显示：填 Gmail → 连接
     $("#gSetup").hidden = !!me.google || ready;
     $("#gExplain").hidden = !!me.google;               // 已连接就不显示长说明        // 管理员还没设定时，下面显示设定步骤
