@@ -867,3 +867,12 @@ body.viewer #detailMenuBtn, body.viewer #deleteEventBtn, body.viewer #editEventB
 #forgotForm label > span { display: block; margin-bottom: 6px; }
 #forgotForm label { margin-top: 10px; }
 .fp-send { margin: 16px 0 8px !important; }
+/* 忘记密码：整体留白多一点 */
+#forgotForm label { display: block; margin-top: 18px !important; }
+#forgotForm label > span { display: block; margin-bottom: 8px !important; }
+#forgotForm .pw-rule { margin: 8px 0 0; line-height: 1.5; }
+#forgotForm #fpHint { margin-bottom: 4px; line-height: 1.5; }
+#forgotForm .fp-send { margin: 14px 0 6px !important; }
+#forgotForm #fpReset { width: 100%; margin-top: 22px; }
+#forgotForm .auth-error { margin-top: 12px; }
+#forgotForm .forgot-link { margin-top: 18px; }
