@@ -16,7 +16,7 @@
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
   <meta name="mobile-web-app-capable" content="yes" />
   <title>Shared Calendar</title>
-  <link rel="stylesheet" href="style.css?v=74" />
+  <link rel="stylesheet" href="style.css?v=75" />
 </head>
 <body class="locked">
   <!-- 登录 / 注册（打开 App 前） -->
@@ -65,7 +65,7 @@
       <div class="home-stats">
         <div class="stat"><b id="homeToday">0</b><span data-i18n="h_today"></span></div>
         <div class="stat"><b id="homeWeek">0</b><span data-i18n="h_week"></span></div>
-        <div class="stat"><b id="homeDue" class="due">0</b><span data-i18n="h_due"></span></div>
+        <div class="stat" hidden><b id="homeDue" class="due">0</b><span data-i18n="h_due"></span></div>
       </div>
       <div id="homeNext" class="home-next" hidden></div>
       <h4 class="home-sec" data-i18n="h_events"></h4>
@@ -74,7 +74,7 @@
 
     <!-- 看板：预约流程 / 付款 / 工作量 -->
     <section id="view-board" class="view">
-      <div class="seg" id="boardSeg">
+      <div class="seg" id="boardSeg" hidden>
         <button type="button" data-seg="pipeline" class="on" data-i18n="b_pipeline"></button>
         <button type="button" data-seg="payments" data-i18n="b_payments"></button>
         <button type="button" data-seg="workload" data-i18n="b_workload"></button>
@@ -340,7 +340,7 @@
   <nav class="tabbar">
     <button data-view="home" class="active"><span>🏠</span><b data-i18n="tab_home"></b></button>
     <button data-view="calendar"><span>📅</span><b data-i18n="tab_calendar"></b></button>
-    <button data-view="board"><span>📋</span><b data-i18n="tab_board"></b></button>
+    <button data-view="board" hidden><span>📋</span><b data-i18n="tab_board"></b></button>
     <button data-view="members"><span>🎨</span><b data-i18n="tab_members"></b></button>
     <button data-view="week" id="waTab" hidden><span>📲</span><b data-i18n="tab_week"></b></button>
     <button data-view="claude" id="claudeTab" hidden><span>💬</span><b data-i18n="tab_claude"></b></button>
@@ -386,7 +386,7 @@
           <div class="d-date" id="dEndBox"><small id="dEndYear"></small><b id="dEndDay"></b><span id="dEndTime"></span></div>
         </div>
       </div>
-      <div class="d-stage"><select id="dStage" data-i18n-aria="f_stage"></select></div>
+      <div class="d-stage" hidden><select id="dStage" data-i18n-aria="f_stage"></select></div>
       <ul class="d-rows">
         <li id="dMemberRow" class="editable" data-edit><span class="ico">👤</span><span id="dMember"></span></li>
         <li class="editable" data-edit><span class="ico">🔔</span><span id="dRemind"></span></li>
@@ -403,7 +403,7 @@
         </div></li>
         <li id="dGoogleRow"><span class="ico">📅</span><span id="dGoogle"></span></li>
       </ul>
-      <div class="sbox" id="dPayBox">
+      <div class="sbox" id="dPayBox" hidden>
         <h5><span data-i18n="p_title"></span><span id="dPayDue"></span></h5>
         <div class="pay3">
           <label><span data-i18n="p_total"></span><input id="dPayTotal" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0" /></label>
@@ -461,8 +461,8 @@
         <div id="labelPicker" class="label-picker" role="radiogroup"></div>
       </div>
       <label class="check"><input type="checkbox" name="remind" id="remindCheck" /> <span data-i18n="f_remind"></span></label>
-      <label><span data-i18n="f_stage"></span><select name="stage" id="stageSelect"></select></label>
-      <div class="row">
+      <label hidden><span data-i18n="f_stage"></span><select name="stage" id="stageSelect"></select></label>
+      <div class="row" hidden>
         <label><span data-i18n="p_total"></span><input name="amount_total" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0" /></label>
         <label><span data-i18n="p_paid"></span><input name="amount_paid" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0" /></label>
       </div>
@@ -553,8 +553,8 @@
   </dialog>
 
   <div id="toast" class="toast" role="status"></div>
-  <script src="config.js?v=74"></script>
-  <script src="app.js?v=74" type="module"></script>
+  <script src="config.js?v=75"></script>
+  <script src="app.js?v=75" type="module"></script>
   <script>
     if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
   </script>

@@ -1,5 +1,5 @@
 // ===================== Shared Calendar / 共享日历 =====================
-import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=74";
+import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=75";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -1544,7 +1544,7 @@ function fillStageSelect(sel, value) {
 function badges(e) {
   const out = [];
   if (e.check_total) out.push(`✅ ${e.check_done}/${e.check_total}`);
-  const bal = balanceOf(e);
+  const bal = 0; // 不用付款功能了
   if (bal > 0) out.push(`💰 ${esc(t("p_due", { n: Number(bal).toLocaleString("en-MY") }))}`);
   return out.join(" · ");
 }

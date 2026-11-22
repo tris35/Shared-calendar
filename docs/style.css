@@ -855,3 +855,5 @@ button:active:not(:disabled), .item:active, .wk-item:active { transform: scale(.
 /* 只能查看：藏起新增 / 编辑 / 删除 */
 body.viewer .fab, body.viewer #addEventBtn, body.viewer #dayNewBtn, body.viewer #ddNew, body.viewer .edit-btn, body.viewer .del-btn,
 body.viewer #detailMenuBtn, body.viewer #deleteEventBtn, body.viewer #editEventBtn, body.viewer #quickAdd { display: none !important; }
+#boardSeg[hidden], #dPayBox[hidden], .stat[hidden], #eventForm .row[hidden], form .row[hidden] { display: none !important; }
+.tabbar button[hidden], .d-stage[hidden], label[hidden] { display: none !important; }
