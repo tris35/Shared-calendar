@@ -67,7 +67,7 @@ const RESET_TEXT: Record<string, { subject: string; body: (c: string) => string 
   ms: { subject: "Kod set semula kata laluan", body: (c) => `Kod untuk set semula kata laluan Shared Calendar anda:\n\n${c}\n\nSah selama 15 minit. Jika anda tidak memintanya, abaikan e-mel ini.` },
 };
 async function sendResetMail(to: string, code: string, lang: string) {
-  const key = env("BREVO_API_KEY");
+  const key = (env("BREVO_API_KEY") || "").replace(/\s+/g, ""); // 去掉复制时多出的空白 / 换行
   const from = (env("BREVO_SENDER") || fixedAdmins()[0] || "").trim();
   if (!key || !from) throw new AuthError("忘记密码功能还没设定好，请联络管理员", 503);
   const tx = RESET_TEXT[lang] || RESET_TEXT.en;
