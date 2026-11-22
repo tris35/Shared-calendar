@@ -676,3 +676,8 @@ button:active:not(:disabled), .item:active, .wk-item:active { transform: scale(.
 
 /* WhatsApp 自动化设定：浅灰色 */
 #waAuto { background: #f3f4f6; border-color: #d6d9de; }
+
+/* 自动化设定：白色；管理：浅粉红 */
+#waAuto { background: var(--surface); border-color: var(--border); }
+#waCard { background: #fdeef4; border-color: #f2c4d6; }
+#waCard h4 { border-top-color: #f2c4d6; }
