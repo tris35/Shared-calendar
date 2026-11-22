@@ -128,7 +128,7 @@ export async function handleApi(req: Request): Promise<Response> {
 
     if (r === "config" && method === "GET") {
       const s = await getSettings();
-      return Response.json({ claude: claudeEnabled(), timezone: s.timezone, labels: db.LABELS, googleLoginReady: !!clientCredentials(), whatsapp: !!waConfig(), siteUrl: mainUrl(siteUrl), googleRedirectUri: redirectUri() });
+      return Response.json({ claude: claudeEnabled(), timezone: s.timezone, labels: db.LABELS, labelNames: s.labelNames || {}, googleLoginReady: !!clientCredentials(), whatsapp: !!waConfig(), siteUrl: mainUrl(siteUrl), googleRedirectUri: redirectUri() });
     }
 
     // ---------- 行程 ----------
@@ -198,6 +198,17 @@ export async function handleApi(req: Request): Promise<Response> {
       const ok = await db.deleteComment(id);
       if (c) sync(c.event_id);
       return Response.json({ ok });
+    }
+
+    // ---------- 颜色标签的名称（所有人共用） ----------
+    if (r === "labels" && seg[1] && method === "PUT") {
+      const id = seg[1];
+      if (!db.LABELS[id]) notFound();
+      const name = String((await body()).name ?? "").trim().slice(0, 30);
+      const names = { ...((await getSettings()).labelNames || {}) };
+      if (name) names[id] = name; else delete names[id];
+      await saveSettings({ labelNames: names });
+      return Response.json({ labelNames: names });
     }
 
     // ---------- 成员 ----------

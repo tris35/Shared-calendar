@@ -70,6 +70,11 @@
 
     <!-- 成员 -->
     <section id="view-members" class="view">
+      <h3 class="section-title" data-i18n="labels_title"></h3>
+      <p class="hint" data-i18n="labels_hint"></p>
+      <ul id="labelList" class="label-list"></ul>
+
+      <h3 class="section-title" data-i18n="people_title"></h3>
       <div class="toolbar">
         <p class="hint" style="padding:0;flex:1" data-i18n="members_hint"></p>
         <button class="btn primary" id="addMemberBtn" data-i18n="add_member"></button>
@@ -215,7 +220,7 @@
 
   <nav class="tabbar">
     <button data-view="calendar" class="active"><span>📅</span><b data-i18n="tab_calendar"></b></button>
-    <button data-view="members"><span>👥</span><b data-i18n="tab_members"></b></button>
+    <button data-view="members"><span>🏷️</span><b data-i18n="tab_members"></b></button>
     <button data-view="claude"><span>✨</span><b data-i18n="tab_claude"></b></button>
     <button data-view="settings"><span>⚙️</span><b data-i18n="tab_settings"></b></button>
   </nav>
@@ -332,6 +337,11 @@
       <h3 id="memberDialogTitle"></h3>
       <label><span data-i18n="m_name"></span><input name="name" required /></label>
       <label><span data-i18n="m_color"></span><input name="color" type="color" value="#3d85c6" /></label>
+      <div class="emoji-field"><span data-i18n="m_emoji"></span>
+        <input type="hidden" name="emoji" />
+        <div id="emojiPicker" class="emoji-picker" role="radiogroup"></div>
+        <input id="emojiCustom" class="emoji-custom" maxlength="8" autocomplete="off" data-i18n-placeholder="emoji_custom_ph" />
+      </div>
       <div class="actions">
         <button type="button" class="btn danger" id="deleteMemberBtn" hidden data-i18n="delete"></button>
         <span class="spacer"></span>

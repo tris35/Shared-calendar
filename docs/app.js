@@ -81,11 +81,12 @@ function enterToSend(input, send) {
 function avatar(name) {
   const n = name || "?";
   const m = state.members.find((x) => x.name === n);
+  if (m?.emoji) return `<span class="avatar emoji" style="--ring:${esc(m.color || "#4f9d69")}">${esc(m.emoji)}</span>`;
   let color = m?.color;
   if (!color) { let h = 0; for (const ch of n) h = (h * 31 + ch.charCodeAt(0)) % 360; color = n === "Claude" ? "#c47a3d" : `hsl(${h} 45% 48%)`; }
   return `<span class="avatar" style="background:${esc(color)}">${esc(n.slice(0, 1))}</span>`;
 }
-const labelName = (id) => t(`label_${id}`);
+const labelName = (id) => state.labelNames?.[id] || t(`label_${id}`);
 const author = (n) => n || t("anonymous");
 
 // ---------- 状态 ----------
@@ -204,7 +205,7 @@ function renderDay() {
       <span class="bar" style="background:${esc(eventColor(e))}"></span>
       <div class="main">
         <div class="t">${esc(e.title)}</div>
-        <div class="s">${e.all_day ? esc(t("all_day")) : fmtTime(e.start) + (e.end ? " – " + fmtTime(e.end) : "")}${e.member_name ? " · " + esc(e.member_name) : ""}${e.photo_count ? " · 📷" + e.photo_count : ""}${e.memo_count ? " · 💬" + e.memo_count : ""}</div>
+        <div class="s">${e.all_day ? esc(t("all_day")) : fmtTime(e.start) + (e.end ? " – " + fmtTime(e.end) : "")}${e.member_name ? " · " + esc((e.member_emoji ? e.member_emoji + " " : "") + e.member_name) : ""}${e.photo_count ? " · 📷" + e.photo_count : ""}${e.memo_count ? " · 💬" + e.memo_count : ""}</div>
       </div>
     </li>`).join("") : `<li class="empty">${esc(t("day_empty"))}</li>`;
 }
@@ -247,7 +248,7 @@ function renderDetail() {
   else { $("#dEndBox").hidden = true; $("#dArrow").hidden = true; if (e.all_day) $("#dStartTime").textContent = t("all_day"); }
   $("#dArrow").style.color = color;
   $("#dMemberRow").hidden = !e.member_name;
-  $("#dMember").textContent = e.member_name || "";
+  $("#dMember").textContent = e.member_name ? (e.member_emoji ? e.member_emoji + " " : "") + e.member_name : "";
   $("#dRemind").textContent = e.remind ? t("remind_on") : t("remind_off");
   const label = e.label && state.labels[e.label];
   $("#dLabelRow").hidden = !label;
@@ -640,7 +641,48 @@ $("#cancelEventBtn").onclick = () => $("#eventDialog").close();
 // ---------- 成员 ----------
 let editingMember = null;
 const memberForm = $("#memberForm");
+// 颜色标签：每个颜色可以取名字（所有人共用）
+function renderLabels() {
+  $("#labelList").innerHTML = Object.entries(state.labels).map(([id, l]) => `
+    <li><span class="label-swatch" style="background:${esc(l.hex)}"></span>
+      <span class="label-base">${esc(t(`label_${id}`))}</span>
+      <input data-label-id="${id}" value="${esc(state.labelNames[id] || "")}" placeholder="${esc(t("label_name_ph"))}" maxlength="30" /></li>`).join("");
+}
+$("#labelList").addEventListener("change", async (ev) => {
+  const inp = ev.target.closest("[data-label-id]");
+  if (!inp) return;
+  try {
+    const r = await api(`/api/labels/${inp.dataset.labelId}`, { method: "PUT", body: { name: inp.value } });
+    state.labelNames = r.labelNames || {};
+    toast(t("label_saved"));
+    renderMonth();
+  } catch (e) { toast(t("save_failed", { error: e.message })); }
+});
+
+// 可爱 / 搞笑的头像
+const EMOJIS = ["🐱", "🐶", "🐼", "🐨", "🐰", "🦊", "🐻", "🐷", "🐸", "🐵", "🙈", "🐥", "🐧", "🦄", "🦖", "🐙", "🐳", "🦋", "🐝", "🐞",
+  "🌸", "🌈", "⭐", "🍓", "🍑", "🍩", "🧁", "🍦", "🎀", "🎈", "👻", "🤡", "💩", "🤪", "😜", "😎", "🥳", "🤠", "🤓", "😴", "🤖", "👽", "👑", "💖"];
+function renderEmojiPicker(selected) {
+  memberForm.emoji.value = selected || "";
+  $("#emojiCustom").value = selected && !EMOJIS.includes(selected) ? selected : "";
+  $("#emojiPicker").innerHTML = [["", t("emoji_none")], ...EMOJIS.map((e) => [e, e])].map(([v, txt]) =>
+    `<button type="button" role="radio" data-emoji="${esc(v)}" aria-checked="${String((selected || "") === v)}" class="${v ? "" : "none"}">${esc(txt)}</button>`).join("");
+}
+$("#emojiPicker").addEventListener("click", (ev) => {
+  const b = ev.target.closest("[data-emoji]");
+  if (!b) return;
+  memberForm.emoji.value = b.dataset.emoji;
+  $("#emojiCustom").value = "";
+  $("#emojiPicker").querySelectorAll("[data-emoji]").forEach((x) => x.setAttribute("aria-checked", String(x === b)));
+});
+$("#emojiCustom").addEventListener("input", () => {
+  const v = $("#emojiCustom").value.trim();
+  memberForm.emoji.value = v;
+  $("#emojiPicker").querySelectorAll("[data-emoji]").forEach((x) => x.setAttribute("aria-checked", String(x.dataset.emoji === v)));
+});
+
 async function renderMembers() {
+  renderLabels();
   state.members = await api("/api/members");
   $("#memberList").innerHTML = state.members.length ? state.members.map((m) => `
     <li class="item" data-id="${m.id}">${avatar(m.name)}<div class="main"><div class="t">${esc(m.name)}</div></div></li>`).join("")
@@ -657,12 +699,13 @@ function openMember(m) {
   $("#memberDialogTitle").textContent = m ? t("edit_member") : t("new_member");
   memberForm.name.value = m?.name ?? "";
   memberForm.color.value = m?.color || ["#4f9d69", "#e07a5f", "#3d85c6", "#b565a7", "#e0a100", "#2a9d8f", "#d1495b", "#6c757d"][state.members.length % 8];
+  renderEmojiPicker(m?.emoji);
   $("#deleteMemberBtn").hidden = !m;
   $("#memberDialog").showModal();
 }
 memberForm.addEventListener("submit", async (ev) => {
   ev.preventDefault();
-  const body = { name: memberForm.name.value.trim(), color: memberForm.color.value };
+  const body = { name: memberForm.name.value.trim(), color: memberForm.color.value, emoji: memberForm.emoji.value || null };
   try {
     if (editingMember) await api(`/api/members/${editingMember.id}`, { method: "PATCH", body });
     else await api("/api/members", { method: "POST", body });
@@ -994,6 +1037,7 @@ async function startApp() {
   document.body.classList.remove("locked");
   [state.config, state.members] = await Promise.all([api("/api/config"), api("/api/members")]);
   state.labels = state.config.labels || {};
+  state.labelNames = state.config.labelNames || {};
   rerenderAll();
   if (!started) {
     started = true;

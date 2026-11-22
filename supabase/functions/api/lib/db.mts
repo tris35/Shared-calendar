@@ -51,7 +51,7 @@ function outEvent(e: any) {
 const outRow = (r: any) => (r ? { ...r, created_at: iso(r.created_at) } : r);
 
 // ---------- 行程 ----------
-const EVENT_COLS = `e.*, m.name AS member_name, m.color AS member_color,
+const EVENT_COLS = `e.*, m.name AS member_name, m.color AS member_color, m.emoji AS member_emoji,
   (SELECT COUNT(*) FROM photos p WHERE p.event_id = e.id)::int AS photo_count,
   (SELECT COUNT(*) FROM comments cm WHERE cm.event_id = e.id AND cm.photo_id IS NULL)::int AS memo_count`;
 
@@ -337,7 +337,7 @@ export async function createMember(m: any) {
   const name = clean(m.name, 40);
   if (!name) throw new Error("请填写名字");
   const [{ n }] = await sql`SELECT COUNT(*)::int AS n FROM members`;
-  const [r] = await sql`INSERT INTO members (name, color) VALUES (${name}, ${m.color || MEMBER_COLORS[n % MEMBER_COLORS.length]}) RETURNING id`;
+  const [r] = await sql`INSERT INTO members (name, color, emoji) VALUES (${name}, ${m.color || MEMBER_COLORS[n % MEMBER_COLORS.length]}, ${clean(m.emoji, 16)}) RETURNING id`;
   return getMember(r.id);
 }
 export async function updateMember(id: number, m: any) {
@@ -345,7 +345,8 @@ export async function updateMember(id: number, m: any) {
   if (!old) return null;
   const name = m.name !== undefined ? clean(m.name, 40) : old.name;
   if (!name) throw new Error("请填写名字");
-  await sql`UPDATE members SET name = ${name}, color = ${m.color || old.color} WHERE id = ${id}`;
+  const emoji = m.emoji !== undefined ? clean(m.emoji, 16) : old.emoji;
+  await sql`UPDATE members SET name = ${name}, color = ${m.color || old.color}, emoji = ${emoji} WHERE id = ${id}`;
   return getMember(id);
 }
 export async function deleteMember(id: number) {

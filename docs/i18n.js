@@ -10,7 +10,8 @@ export const LANGS = [
 const D = {
   en: {
     app_name: "Shared Calendar",
-    tab_calendar: "Calendar", tab_members: "Members", tab_claude: "Claude", tab_settings: "Settings",
+    tab_calendar: "Calendar", tab_members: "Labels", tab_claude: "Claude", tab_settings: "Settings",
+    labels_title: "🎨 Colour labels", labels_hint: "Give each colour a meaning — everyone sees the same names. Leave empty to use the colour name.", label_name_ph: "e.g. Photoshoot", label_saved: "Saved", people_title: "👫 People", m_emoji: "Avatar (cute & funny)", emoji_none: "Letter", emoji_custom_ph: "…or type any emoji",
     today: "Today", prev_month: "Previous month", next_month: "Next month", add_event: "Add event",
     ok: "OK", cancel: "Cancel", delete: "Delete", save: "Save", send: "Send", close: "Close", more: "More", remove: "Remove",
     saved: "Saved", anonymous: "Anonymous", all_day: "All day", uploading: "Uploading…", sending: "Sending…",
@@ -118,7 +119,8 @@ const D = {
 
   zh: {
     app_name: "共享日历",
-    tab_calendar: "日历", tab_members: "成员", tab_claude: "Claude", tab_settings: "设置",
+    tab_calendar: "日历", tab_members: "标签", tab_claude: "Claude", tab_settings: "设置",
+    labels_title: "🎨 颜色标签", labels_hint: "给每个颜色取个意思，所有人看到一样的名称。留空就用颜色名称。", label_name_ph: "例如：拍摄", label_saved: "已保存", people_title: "👫 成员", m_emoji: "头像（可爱 / 搞笑）", emoji_none: "用字母", emoji_custom_ph: "…或自己输入任何 emoji",
     today: "今天", prev_month: "上个月", next_month: "下个月", add_event: "新增行程",
     ok: "确定", cancel: "取消", delete: "删除", save: "保存", send: "发送", close: "关闭", more: "更多", remove: "移除",
     saved: "已保存", anonymous: "匿名", all_day: "全天", uploading: "上传中…", sending: "发送中…",
@@ -219,7 +221,8 @@ const D = {
 
   "zh-TW": {
     app_name: "共享日曆",
-    tab_calendar: "日曆", tab_members: "成員", tab_claude: "Claude", tab_settings: "設定",
+    tab_calendar: "日曆", tab_members: "標籤", tab_claude: "Claude", tab_settings: "設定",
+    labels_title: "🎨 顏色標籤", labels_hint: "給每個顏色取個意思，所有人看到一樣的名稱。留空就用顏色名稱。", label_name_ph: "例如：拍攝", label_saved: "已儲存", people_title: "👫 成員", m_emoji: "頭像（可愛 / 搞笑）", emoji_none: "用字母", emoji_custom_ph: "…或自己輸入任何 emoji",
     today: "今天", prev_month: "上個月", next_month: "下個月", add_event: "新增行程",
     ok: "確定", cancel: "取消", delete: "刪除", save: "儲存", send: "傳送", close: "關閉", more: "更多", remove: "移除",
     saved: "已儲存", anonymous: "匿名", all_day: "全天", uploading: "上傳中…", sending: "傳送中…",
@@ -320,7 +323,8 @@ const D = {
 
   ms: {
     app_name: "Kalendar Bersama",
-    tab_calendar: "Kalendar", tab_members: "Ahli", tab_claude: "Claude", tab_settings: "Tetapan",
+    tab_calendar: "Kalendar", tab_members: "Label", tab_claude: "Claude", tab_settings: "Tetapan",
+    labels_title: "🎨 Label warna", labels_hint: "Beri setiap warna maksud — semua orang nampak nama yang sama. Biarkan kosong untuk guna nama warna.", label_name_ph: "cth. Penggambaran", label_saved: "Disimpan", people_title: "👫 Ahli", m_emoji: "Avatar (comel & lucu)", emoji_none: "Huruf", emoji_custom_ph: "…atau taip mana-mana emoji",
     today: "Hari ini", prev_month: "Bulan lepas", next_month: "Bulan depan", add_event: "Tambah acara",
     ok: "OK", cancel: "Batal", delete: "Padam", save: "Simpan", send: "Hantar", close: "Tutup", more: "Lagi", remove: "Buang",
     saved: "Disimpan", anonymous: "Tanpa nama", all_day: "Sepanjang hari", uploading: "Memuat naik…", sending: "Menghantar…",

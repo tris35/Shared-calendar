@@ -11,6 +11,7 @@ export type Settings = {
   waLimit?: number | null;     // 每个月最多发几则 WhatsApp（例如 Kapso 免费方案的上限）；空 = 不限
   cronKey: string;             // 资料库排程（pg_cron）呼叫 /api/cron/* 时用的密钥
   cronUrl?: string;            // 排程要呼叫的网址（这个函数自己的网址，自动记下）
+  labelNames?: Record<string, string>; // 颜色标签的自订名称（例如 番茄红 = 拍摄），所有人共用
 };
 
 let cache: { at: number; value: Settings } | null = null;
