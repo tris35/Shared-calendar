@@ -651,3 +651,11 @@ button:active:not(:disabled), .item:active, .wk-item:active { transform: scale(.
 /* WhatsApp Schedule 清单：浅黄色 */
 #weekWa { background: #fff8db; border-color: #f0dc8f; }
 #weekWa .ww-item + .ww-item { border-top-color: #f0dc8f; }
+
+/* 所有按钮都有颜色 */
+.btn { background: #dbe8ff; border-color: #b9cdf2; color: #1f3a68; font-weight: 600; }
+.btn:hover:not(:disabled) { background: #c9dcfb; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+.btn.primary:hover:not(:disabled) { filter: brightness(1.12); background: var(--accent); }
+.btn.danger { background: #d64545; border-color: #d64545; color: #fff; }
+.btn.danger:hover:not(:disabled) { background: #b83232; }
