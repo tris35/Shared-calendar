@@ -1,5 +1,5 @@
 // ===================== Shared Calendar / 共享日历 =====================
-import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=45";
+import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=46";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -956,12 +956,6 @@ async function renderSettings() {
     const [me, set] = await Promise.all([api("/api/auth/me"), api("/api/settings")]);
     state.me = me;
     $("#acctEmail").textContent = me.email;
-    $("#waStatus").textContent = state.config?.whatsapp ? t("wa_ready") : "";
-    $("#waStatus").hidden = !state.config?.whatsapp; // 还没设定时不显示说明
-    $("#waNoAccess").hidden = !!me.can_whatsapp;
-    $("#waAdmin").hidden = !me.admin;
-    if (me.admin) { loadWaUsers(); loadAdmins(); }
-    loadWaUsage();
     if (document.activeElement !== $("#acctName")) $("#acctName").value = me.name;
     if (document.activeElement !== $("#tzInput")) $("#tzInput").value = set.timezone;
     $("#icsUrl").value = set.icsUrl;
@@ -990,6 +984,16 @@ $("#gConnectForm").addEventListener("submit", async (ev) => {
 });
 // ---------- 选择要双向同步的 Google 日历 ----------
 // WhatsApp 这个月用了几则（让大家知道免费方案还剩多少）
+// WhatsApp 卡片（在 WhatsApp Schedule 页签）：状态、用量、管理员设定
+function renderWaCard() {
+  const me = state.me || {};
+  $("#waStatus").textContent = state.config?.whatsapp ? t("wa_ready") : "";
+  $("#waStatus").hidden = !state.config?.whatsapp; // 还没设定时不显示说明
+  $("#waNoAccess").hidden = !!me.can_whatsapp;
+  $("#waAdmin").hidden = !me.admin;
+  if (me.admin) { loadWaUsers(); loadAdmins(); }
+  loadWaUsage();
+}
 async function loadWaUsage() {
   if (!state.config?.whatsapp) { $("#waUsage").textContent = ""; $("#fWaUsage").textContent = ""; return; }
   try {
@@ -1097,6 +1101,7 @@ async function renderWeek() {
   renderWeekWa(evs);
   $("#waAuto").hidden = !state.me?.admin;
   if (state.me?.admin && !waAutoLoaded) loadWaAuto();
+  renderWaCard();
 }
 // 这星期的 WhatsApp 客户讯息：谁、什么时候发、发了没有
 function renderWeekWa(evs) {

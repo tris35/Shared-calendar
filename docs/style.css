@@ -643,3 +643,7 @@ button:active:not(:disabled), .item:active, .wk-item:active { transform: scale(.
 #view-week .week-wa { margin-top: 8px; }
 #weekWa { margin-bottom: 12px; }
 #waAuto { margin-bottom: 90px; }
+
+#waCard { margin: 0 16px 90px; border-width: 2px; border-color: var(--grid); }
+#waCard h4 { font-weight: 800; padding-top: 10px; border-top: 1.5px solid var(--grid); }
+#waAuto { margin-bottom: 12px; }

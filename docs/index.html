@@ -16,7 +16,7 @@
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
   <meta name="mobile-web-app-capable" content="yes" />
   <title>Shared Calendar</title>
-  <link rel="stylesheet" href="style.css?v=45" />
+  <link rel="stylesheet" href="style.css?v=46" />
 </head>
 <body class="locked">
   <!-- 登录 / 注册（打开 App 前） -->
@@ -116,6 +116,28 @@
           <button type="button" class="btn primary" id="waAutoSave" data-i18n="save"></button>
         </div>
       </section>
+
+      <!-- WhatsApp：状态、每月上限、管理员、谁可以发（从「设置」搬过来） -->
+        <section class="card week-wa wa-card" id="waCard">
+          <h3 data-i18n="wa_title"></h3>
+          <p id="waStatus" class="hint" style="padding:0"></p>
+          <p id="waUsage" class="hint wa-usage" style="padding:0"></p>
+          <p id="waNoAccess" class="hint warn" style="padding:0" data-i18n="wa_no_access" hidden></p>
+          <div id="waAdmin" hidden>
+            <h4 data-i18n="adm_title"></h4>
+            <p class="hint" style="padding:0" data-i18n="adm_hint"></p>
+            <div class="composer"><textarea id="admEmails" rows="2" data-i18n-placeholder="adm_ph"></textarea>
+              <button type="button" class="btn primary small" id="admSave" data-i18n="save"></button></div>
+            <label class="wa-limit"><span data-i18n="wa_limit_label"></span>
+              <div class="composer"><input id="waLimit" type="number" min="0" step="1" inputmode="numeric" />
+              <button type="button" class="btn primary small" id="waLimitSave" data-i18n="save"></button></div>
+            </label>
+            <p class="hint" style="padding:0" data-i18n="wa_limit_hint"></p>
+            <h4 data-i18n="wa_admin_title"></h4>
+            <p class="hint" style="padding:0" data-i18n="wa_admin_hint"></p>
+            <ul id="waUsers" class="wa-users"></ul>
+          </div>
+        </section>
     </section>
 
     <!-- Claude 助手 -->
@@ -214,26 +236,7 @@
           <p id="gExplain" class="hint" style="padding:0"><span data-i18n="g_explain"></span><br><span data-i18n="g_warn"></span></p>
         </section>
 
-        <section class="card">
-          <h3 data-i18n="wa_title"></h3>
-          <p id="waStatus" class="hint" style="padding:0"></p>
-          <p id="waUsage" class="hint wa-usage" style="padding:0"></p>
-          <p id="waNoAccess" class="hint warn" style="padding:0" data-i18n="wa_no_access" hidden></p>
-          <div id="waAdmin" hidden>
-            <h4 data-i18n="adm_title"></h4>
-            <p class="hint" style="padding:0" data-i18n="adm_hint"></p>
-            <div class="composer"><textarea id="admEmails" rows="2" data-i18n-placeholder="adm_ph"></textarea>
-              <button type="button" class="btn primary small" id="admSave" data-i18n="save"></button></div>
-            <label class="wa-limit"><span data-i18n="wa_limit_label"></span>
-              <div class="composer"><input id="waLimit" type="number" min="0" step="1" inputmode="numeric" />
-              <button type="button" class="btn primary small" id="waLimitSave" data-i18n="save"></button></div>
-            </label>
-            <p class="hint" style="padding:0" data-i18n="wa_limit_hint"></p>
-            <h4 data-i18n="wa_admin_title"></h4>
-            <p class="hint" style="padding:0" data-i18n="wa_admin_hint"></p>
-            <ul id="waUsers" class="wa-users"></ul>
-          </div>
-        </section>
+
 
         <section class="card" id="icsCard" hidden><!-- 订阅链接：已用 Google 同步，所以隐藏 -->
           <h3 data-i18n="ics_title"></h3>
@@ -451,8 +454,8 @@
   </dialog>
 
   <div id="toast" class="toast" role="status"></div>
-  <script src="config.js?v=45"></script>
-  <script src="app.js?v=45" type="module"></script>
+  <script src="config.js?v=46"></script>
+  <script src="app.js?v=46" type="module"></script>
   <script>
     if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
   </script>
