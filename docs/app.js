@@ -701,7 +701,7 @@ function openMember(m) {
   memberForm.reset();
   $("#memberDialogTitle").textContent = m ? t("edit_member") : t("new_member");
   memberForm.name.value = m?.name ?? "";
-  memberForm.color.value = m?.color || ["#4f9d69", "#e07a5f", "#3d85c6", "#b565a7", "#e0a100", "#2a9d8f", "#d1495b", "#6c757d"][state.members.length % 8];
+  memberForm.color.value = m?.color || ["#e8a33d", "#e07a5f", "#3d85c6", "#b565a7", "#e0a100", "#2a9d8f", "#d1495b", "#6c757d"][state.members.length % 8];
   // 新的人：先帮他选一个还没人用的 emoji（可以改）
   const used = new Set(state.members.map((x) => x.emoji));
   const free = EMOJIS.filter((e) => !used.has(e));

@@ -328,7 +328,7 @@ export async function eventFeed(eventId: number) {
 }
 
 // ---------- 成员 ----------
-const MEMBER_COLORS = ["#4f9d69", "#e07a5f", "#3d85c6", "#b565a7", "#e0a100", "#2a9d8f", "#d1495b", "#6c757d"];
+const MEMBER_COLORS = ["#e8a33d", "#e07a5f", "#3d85c6", "#b565a7", "#e0a100", "#2a9d8f", "#d1495b", "#6c757d"];
 export async function listMembers() {
   // 以前建立、还没有 emoji 的人 → 补一个
   for (const r of await sql`SELECT id FROM members WHERE emoji IS NULL OR emoji = '' ORDER BY id`)
