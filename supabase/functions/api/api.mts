@@ -216,17 +216,19 @@ export async function handleApi(req: Request): Promise<Response> {
       if (!isAdmin(me)) throw new HttpError(403, "只有管理员可以设定");
       const cur = (await getSettings()).digest || { mode: "off", hour: 8, phones: [] };
       if (!seg[1] && method === "GET") {
-        const want = url.searchParams.get("preview") || cur.mode; // 预览还没保存的选择
-        return Response.json({ ...cur, preview: await buildDigest(want === "weekly" ? "weekly" : "daily") });
+        const want = url.searchParams.get("preview") || (cur.mode === "date" ? cur.date : cur.mode) || ""; // 预览还没保存的选择
+        const isDate = /^\d{4}-\d{2}-\d{2}$/.test(want);
+        return Response.json({ ...cur, preview: await buildDigest(want === "weekly" ? "weekly" : "daily", new Date(), isDate ? want : undefined) });
       }
       if (!seg[1] && method === "PUT") {
         const b = await body();
-        const mode = ["off", "daily", "weekly"].includes(b.mode) ? b.mode : "off";
+        const date = /^\d{4}-\d{2}-\d{2}$/.test(String(b.date || "")) ? String(b.date) : "";
+        const mode = date ? "date" : ["off", "daily", "weekly"].includes(b.mode) ? b.mode : "off";
         const hour = Math.min(23, Math.max(0, Math.floor(Number(b.hour) || 8)));
         const phones = String(b.phones ?? "").split(/[\n,;]+/).map((x) => x.trim()).filter(Boolean).slice(0, 20);
-        const digest = { mode, hour, phones, lastSent: cur.lastSent };
+        const digest = { mode, hour, phones, date, lastSent: date !== cur.date ? undefined : cur.lastSent };
         await saveSettings({ digest });
-        return Response.json({ ...digest, preview: await buildDigest(mode === "weekly" ? "weekly" : "daily") });
+        return Response.json({ ...digest, preview: await buildDigest(mode === "weekly" ? "weekly" : "daily", new Date(), date || undefined) });
       }
     }
 

@@ -1,5 +1,5 @@
 // ===================== Shared Calendar / 共享日历 =====================
-import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=49";
+import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=50";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -1185,7 +1185,7 @@ async function loadWaAuto() {
   waAutoLoaded = true;
   try {
     const [d, w] = await Promise.all([api("/api/digest"), api("/api/admin/wa-text")]);
-    $("#dgMode").value = d.mode || "off";
+    $("#dgDate").value = d.mode === "date" ? d.date || "" : "";
     $("#dgHour").value = String(d.hour ?? 8);
     $("#dgPhones").value = (d.phones || []).join(", ");
     $("#wtText").value = w.text || "";
@@ -1199,18 +1199,18 @@ function updateWaPreview() {
   // 给自己 / 员工的行程摘要：用目前选的「每天 / 每星期一」从伺服器算出来（还没保存）
   clearTimeout(waPrevTimer);
   waPrevTimer = setTimeout(async () => {
-    const mode = $("#dgMode").value;
-    if (mode === "off") { $("#dgPreview").textContent = t("dg_prev_off"); return; }
-    try { const d = await api(`/api/digest?preview=${mode}`); $("#dgPreview").textContent = (d.preview || "").split(" | ").join("\n"); }
+    const date = $("#dgDate").value;
+    if (!date) { $("#dgPreview").textContent = t("dg_prev_off"); return; }
+    try { const d = await api(`/api/digest?preview=${date}`); $("#dgPreview").textContent = (d.preview || "").split(" | ").join("\n"); }
     catch (e) { $("#dgPreview").textContent = e.message; }
   }, 300);
 }
-["#wtText", "#dgMode", "#dgHour", "#dgPhones"].forEach((sel) => $(sel).addEventListener("input", updateWaPreview));
-$("#dgMode").addEventListener("change", updateWaPreview);
+["#wtText", "#dgDate", "#dgHour", "#dgPhones"].forEach((sel) => $(sel).addEventListener("input", updateWaPreview));
+$("#dgDate").addEventListener("change", updateWaPreview);
 $("#waAutoSave").onclick = async () => {
   try {
     await api("/api/admin/wa-text", { method: "PUT", body: { text: $("#wtText").value } });
-    await api("/api/digest", { method: "PUT", body: { mode: $("#dgMode").value, hour: $("#dgHour").value, phones: $("#dgPhones").value } });
+    await api("/api/digest", { method: "PUT", body: { date: $("#dgDate").value, hour: $("#dgHour").value, phones: $("#dgPhones").value } });
     if (state.config) state.config.waDefault = $("#wtText").value;
   } catch (e) { toast(t("save_failed", { error: e.message })); }
 };

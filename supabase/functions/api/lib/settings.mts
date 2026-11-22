@@ -20,7 +20,8 @@ export type Settings = {
 };
 
 export type Digest = {
-  mode: "off" | "daily" | "weekly"; // 每天早上：今天的行程；每周一早上：这个星期的行程
+  mode: "off" | "daily" | "weekly" | "date"; // date = 只在指定的那天发一次（那天的行程）
+  date?: string;                    // mode = "date" 时：要发的日期（YYYY-MM-DD）
   hour: number;                     // 几点发（App 时区）
   phones: string[];                 // 收件人电话
   lastSent?: string;                // 最后一次发送的日期（YYYY-MM-DD），避免重复

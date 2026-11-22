@@ -139,9 +139,9 @@ const plusDays = (ymd: string, n: number) => {
 };
 
 /** 摘要文字：日期、时间、谁、标签名称，已完成的打 ✓。WhatsApp 模板参数不能换行，所以用 | 分隔 */
-export async function buildDigest(mode: "daily" | "weekly", now = new Date()) {
+export async function buildDigest(mode: "daily" | "weekly", now = new Date(), forDate?: string) {
   const { timezone, labelNames = {} } = await getSettings();
-  const today = ymdIn(now, timezone);
+  const today = forDate || ymdIn(now, timezone);
   let from = today, days = 1;
   if (mode === "weekly") { // 从这个星期一开始的 7 天
     const dow = new Date(`${today}T12:00:00Z`).getUTCDay(); // 0 = 星期日
@@ -157,7 +157,7 @@ export async function buildDigest(mode: "daily" | "weekly", now = new Date()) {
     .filter(Boolean).join(" ");
   const parts: string[] = [];
   if (mode === "daily") {
-    parts.push(`📅 Today ${fmtD(today)}: ${events.length} event${events.length === 1 ? "" : "s"}`);
+    parts.push(`📅 ${forDate ? "" : "Today "}${fmtD(today)}: ${events.length} event${events.length === 1 ? "" : "s"}`);
     parts.push(...events.map(line));
   } else {
     parts.push(`📋 This week ${fmtD(from)} – ${fmtD(plusDays(from, 6))}: ${events.length} event${events.length === 1 ? "" : "s"}`);
@@ -182,9 +182,10 @@ export async function sendDigestIfDue(now = new Date()) {
   const hour = Number(now.toLocaleString("en-GB", { timeZone: s.timezone, hour: "2-digit", hourCycle: "h23" }));
   if (hour < d.hour) return { skipped: true };
   if (d.mode === "weekly" && new Date(`${today}T12:00:00Z`).getUTCDay() !== 1) return { skipped: true }; // 只在星期一
+  if (d.mode === "date" && d.date !== today) return { skipped: true }; // 只在指定的那天
   const { saveSettings } = await import("./settings.mts");
   await saveSettings({ digest: { ...d, lastSent: today } }); // 先记下，避免同时发两次
-  const text = await buildDigest(d.mode);
+  const text = await buildDigest(d.mode === "weekly" ? "weekly" : "daily");
   const c = waConfig()!;
   let sent = 0, failed = 0;
   for (const raw of d.phones) {
