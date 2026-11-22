@@ -627,3 +627,7 @@ button:active:not(:disabled), .item:active, .wk-item:active { transform: scale(.
 .ww-status.wait { background: #e3ecfb; color: #2d5fa8; }
 .ww-status.fail { background: #fde2df; color: #b83232; }
 .ww-status.off { color: var(--muted); }
+
+/* WhatsApp 自动化设定（这星期页签） */
+.wa-auto h4 { margin: 10px 0 0; font-size: 14px; }
+.wa-auto #waAutoSave { align-self: stretch; margin-top: 8px; }

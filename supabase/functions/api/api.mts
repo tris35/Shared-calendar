@@ -209,7 +209,10 @@ export async function handleApi(req: Request): Promise<Response> {
     if (r === "digest") {
       if (!isAdmin(me)) throw new HttpError(403, "只有管理员可以设定");
       const cur = (await getSettings()).digest || { mode: "off", hour: 8, phones: [] };
-      if (!seg[1] && method === "GET") return Response.json({ ...cur, preview: await buildDigest(cur.mode === "weekly" ? "weekly" : "daily") });
+      if (!seg[1] && method === "GET") {
+        const want = url.searchParams.get("preview") || cur.mode; // 预览还没保存的选择
+        return Response.json({ ...cur, preview: await buildDigest(want === "weekly" ? "weekly" : "daily") });
+      }
       if (!seg[1] && method === "PUT") {
         const b = await body();
         const mode = ["off", "daily", "weekly"].includes(b.mode) ? b.mode : "off";

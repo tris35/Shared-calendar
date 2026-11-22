@@ -1,5 +1,5 @@
 // ===================== Shared Calendar / 共享日历 =====================
-import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=40";
+import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=41";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -960,7 +960,7 @@ async function renderSettings() {
     $("#waStatus").hidden = !state.config?.whatsapp; // 还没设定时不显示说明
     $("#waNoAccess").hidden = !!me.can_whatsapp;
     $("#waAdmin").hidden = !me.admin;
-    if (me.admin) { loadWaUsers(); loadDigest(); loadAdmins(); loadWaText(); }
+    if (me.admin) { loadWaUsers(); loadAdmins(); }
     loadWaUsage();
     if (document.activeElement !== $("#acctName")) $("#acctName").value = me.name;
     if (document.activeElement !== $("#tzInput")) $("#tzInput").value = set.timezone;
@@ -1095,6 +1095,8 @@ async function renderWeek() {
   }
   $("#weekDays").innerHTML = html;
   renderWeekWa(evs);
+  $("#waAuto").hidden = !state.me?.admin;
+  if (state.me?.admin && !waAutoLoaded) loadWaAuto();
 }
 // 这星期的 WhatsApp 客户讯息：谁、什么时候发、发了没有
 function renderWeekWa(evs) {
@@ -1146,17 +1148,6 @@ $("#weekDays").addEventListener("click", async (ev) => {
   if (li) openDetail(Number(li.dataset.id));
 });
 
-// ---------- 给客户的讯息：自己写的开头 / 结尾 ----------
-async function loadWaText() {
-  try { $("#wtText").value = (await api("/api/admin/wa-text")).text; } catch {}
-}
-$("#wtSave").onclick = async () => {
-  try {
-    await api("/api/admin/wa-text", { method: "PUT", body: { text: $("#wtText").value } });
-    if (state.config) state.config.waDefault = $("#wtText").value;
-  } catch (e) { toast(t("save_failed", { error: e.message })); }
-};
-
 // ---------- 管理员名单（管理员可以加别的 Gmail 当管理员） ----------
 async function loadAdmins() {
   try {
@@ -1172,25 +1163,41 @@ $("#admSave").onclick = async () => {
   } catch (e) { toast(t("save_failed", { error: e.message })); }
 };
 
-// ---------- WhatsApp 行程摘要（管理员） ----------
-$("#dgHour").innerHTML = Array.from({ length: 24 }, (_, h) => `<option value="${h}">${String(h).padStart(2, "0")}:00</option>`).join("");
-async function loadDigest() {
+// ---------- WhatsApp 自动化设定（这星期页签，管理员）：填好 → 预览 → 一个「保存」 ----------
+let waAutoLoaded = false;
+$("#dgHour").innerHTML = Array.from({ length: 24 }, (_, h) => `<option value="${h}">${esc(timeLabel(`${pad(h)}:00`))}</option>`).join("");
+async function loadWaAuto() {
+  waAutoLoaded = true;
   try {
-    const d = await api("/api/digest");
+    const [d, w] = await Promise.all([api("/api/digest"), api("/api/admin/wa-text")]);
     $("#dgMode").value = d.mode || "off";
     $("#dgHour").value = String(d.hour ?? 8);
     $("#dgPhones").value = (d.phones || []).join(", ");
-    $("#dgPreview").textContent = (d.preview || "").split(" | ").join("\n");
-  } catch (e) { $("#dgPreview").textContent = e.message; }
+    $("#wtText").value = w.text || "";
+    updateWaPreview();
+  } catch (e) { waAutoLoaded = false; $("#dgPreview").textContent = e.message; }
 }
-$("#dgSave").onclick = async () => {
-  const btn = $("#dgSave"); btn.disabled = true;
+let waPrevTimer = null;
+function updateWaPreview() {
+  // 给客户：就是这段文字（WhatsApp 会把换行变成「 | 」）
+  $("#wtPreview").textContent = $("#wtText").value.trim() || "—";
+  // 给自己 / 员工的行程摘要：用目前选的「每天 / 每星期一」从伺服器算出来（还没保存）
+  clearTimeout(waPrevTimer);
+  waPrevTimer = setTimeout(async () => {
+    const mode = $("#dgMode").value;
+    if (mode === "off") { $("#dgPreview").textContent = t("dg_prev_off"); return; }
+    try { const d = await api(`/api/digest?preview=${mode}`); $("#dgPreview").textContent = (d.preview || "").split(" | ").join("\n"); }
+    catch (e) { $("#dgPreview").textContent = e.message; }
+  }, 300);
+}
+["#wtText", "#dgMode", "#dgHour", "#dgPhones"].forEach((sel) => $(sel).addEventListener("input", updateWaPreview));
+$("#dgMode").addEventListener("change", updateWaPreview);
+$("#waAutoSave").onclick = async () => {
   try {
-    const d = await api("/api/digest", { method: "PUT", body: { mode: $("#dgMode").value, hour: $("#dgHour").value, phones: $("#dgPhones").value } });
-    $("#dgPreview").textContent = (d.preview || "").split(" | ").join("\n");
-    toast(t("saved"));
+    await api("/api/admin/wa-text", { method: "PUT", body: { text: $("#wtText").value } });
+    await api("/api/digest", { method: "PUT", body: { mode: $("#dgMode").value, hour: $("#dgHour").value, phones: $("#dgPhones").value } });
+    if (state.config) state.config.waDefault = $("#wtText").value;
   } catch (e) { toast(t("save_failed", { error: e.message })); }
-  btn.disabled = false;
 };
 
 // 「我的日历」清单：勾选要同步哪些日历（主日历一定同步）
