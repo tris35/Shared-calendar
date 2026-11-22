@@ -755,6 +755,19 @@ $("#waUsers").addEventListener("change", async (ev) => {
   box.disabled = false;
 });
 
+// 外观：浅色 / 深色 / 跟随手机（只存在这台装置）
+(() => {
+  const sel = $("#themeSelect");
+  let cur = "light";
+  try { cur = localStorage.getItem("theme") || "light"; } catch {}
+  sel.value = cur;
+  sel.addEventListener("change", () => {
+    try { localStorage.setItem("theme", sel.value); } catch {}
+    if (sel.value === "auto") document.documentElement.removeAttribute("data-theme");
+    else document.documentElement.setAttribute("data-theme", sel.value);
+  });
+})();
+
 // 「我的日历」清单：勾选要同步哪些日历（主日历一定同步）
 async function loadCalList() {
   const ul = $("#syncCals");
