@@ -7,7 +7,7 @@ import { putPhoto, getPhotoData, deletePhotoData } from "./lib/photos.mts";
 import * as db from "./lib/db.mts";
 import { getSettings, saveSettings, sign } from "./lib/settings.mts";
 import { chat, claudeEnabled } from "./lib/claude.mts";
-import { syncEvent, deleteGoogleEvents, authUrl, handleCallback, disconnect, clientCredentials, redirectUri, mainUrl, listGoogleCalendars, switchSyncCalendar, pullFromGoogle, ensureWatch, pushTarget } from "./lib/gcal.mts";
+import { syncEvent, deleteGoogleEvents, authUrl, handleCallback, disconnect, clientCredentials, redirectUri, mainUrl, listGoogleCalendars, listSyncCalendars, setCalendarEnabled, switchSyncCalendar, pullFromGoogle, ensureWatch, pushTarget } from "./lib/gcal.mts";
 import { AuthError, signup, login, currentUser, changePassword, publicUser, isAdmin, canWhatsApp } from "./lib/auth.mts";
 import { waConfig, sendCustomerMessage, customerSendAt, waUsage } from "./lib/whatsapp.mts";
 import { tr, langFrom, normLang, LANG_CODES, desc } from "./lib/i18n.mts";
@@ -214,8 +214,13 @@ export async function handleApi(req: Request): Promise<Response> {
     if (r === "google") {
       if (seg[1] === "connect" && method === "POST") return Response.json({ url: await authUrl(siteUrl, me.id, String((await body()).gmail || me.email)) });
       if (seg[1] === "disconnect" && method === "POST") { await disconnect(me.id); return Response.json({ ok: true }); }
-      // 我的 Google 帐号里有哪些日历（选择要导入哪一个）
-      if (seg[1] === "calendars" && method === "GET") return Response.json(await listGoogleCalendars(me.id));
+      // 我的 Google「我的日历」清单，和每个日历是否同步（勾选）
+      if (seg[1] === "calendars" && !seg[2] && method === "GET") return Response.json(await listSyncCalendars(me.id));
+      if (seg[1] === "calendars" && seg[2] && method === "PUT") {
+        const r = await setCalendarEnabled(me.id, decodeURIComponent(seg[2]), !!(await body()).enabled);
+        later(ensureWatch(me.id, siteUrl));
+        return Response.json(r);
+      }
       // 改成和另一个 Google 日历双向同步（例如「拍摄」）
       if (seg[1] === "sync-calendar" && method === "POST") {
         const r = await switchSyncCalendar(me.id, String((await body()).calendarId || ""));
@@ -238,6 +243,9 @@ export async function handleApi(req: Request): Promise<Response> {
         let ok = 0, failed = 0, lastError = "";
         for (const e of events) {
           if (Date.now() > deadline) break;
+          // 只补上 Google 还没有的（已经同步好的不重写，避免改掉 Google 上的资料）
+          const m: any = await db.getEventGoogle(e.id, me.id);
+          if (m && !m.error) { ok++; continue; }
           const res: any = await syncEvent(e.id, siteUrl, me.id);
           if (res.ok) ok++; else if (!res.skipped) { failed++; lastError = res.error; }
         }

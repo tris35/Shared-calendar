@@ -200,8 +200,10 @@ async function syncOne(l: Link, e: any, body: any, s: Settings) {
   const gid = prev?.google_event_id || googleIdFor(e.id, l.user_id, s.secret);
   try {
     const json = JSON.stringify({ ...body, id: gid });
-    const cal = encodeURIComponent(l.calendar_id);
-    const put = () => gfetch(l, `/calendars/${cal}/events/${encodeURIComponent(gid)}`, { method: "PUT", body: json });
+    const calId = prev?.calendar_id || l.calendar_id; // 已有的 → 在它原本的日历更新；新的 → 主日历
+    const cal = encodeURIComponent(calId);
+    // PATCH：只改 App 管的栏位，保留 Google 上其他资料（邀请的人、视讯会议、附件…）
+    const put = () => gfetch(l, `/calendars/${cal}/events/${encodeURIComponent(gid)}`, { method: "PATCH", body: json });
     let res = await put();                                   // 已存在 → 更新
     if (res.status === 404 || res.status === 410) {
       res = await gfetch(l, `/calendars/${cal}/events`, { method: "POST", body: json }); // 不存在 → 建立
@@ -210,7 +212,7 @@ async function syncOne(l: Link, e: any, body: any, s: Settings) {
     if (!res.ok) throw new Error(await gerror(res));
     const saved: any = await res.json().catch(() => ({}));
     // 记住我们写入的版本：之后从 Google 读回时，看到同一个版本就知道是自己写的，不会当成别人修改
-    await db.setEventGoogle(e.id, l.user_id, { google_event_id: gid, etag: saved.etag ?? null });
+    await db.setEventGoogle(e.id, l.user_id, { google_event_id: gid, calendar_id: calId, etag: saved.etag ?? null });
     return { ok: true };
   } catch (err: any) {
     const error = String(err?.message || err);
@@ -239,14 +241,14 @@ export async function syncEvent(eventId: number, siteUrl: string, onlyUserId?: n
 }
 
 /** 行程被删除前先取对应，删除后再删掉每个人 Google 日历上的那一笔 */
-export async function deleteGoogleEvents(mappings: { user_id: number; google_event_id: string }[]) {
+export async function deleteGoogleEvents(mappings: { user_id: number; google_event_id: string; calendar_id?: string | null }[]) {
   if (!mappings.length) return;
   const links = new Map((await db.listGoogleLinks()).map((l: any) => [l.user_id, l]));
   for (const m of mappings) {
     const l: any = links.get(m.user_id);
     if (!l) continue;
     try {
-      const res = await gfetch(l, `/calendars/${encodeURIComponent(l.calendar_id)}/events/${encodeURIComponent(m.google_event_id)}`, { method: "DELETE" });
+      const res = await gfetch(l, `/calendars/${encodeURIComponent(m.calendar_id || l.calendar_id)}/events/${encodeURIComponent(m.google_event_id)}`, { method: "DELETE" });
       if (!res.ok && res.status !== 404 && res.status !== 410) console.error("[Google 日历] 删除失败：", await gerror(res));
     } catch (err) { console.error("[Google 日历] 删除失败：", err); }
   }
@@ -341,86 +343,164 @@ export async function pullFromGoogle(userId: number, siteUrl: string, opts: { mi
   }
 }
 
+// 这个 Gmail「我的日历」里的日历（自己是拥有者；不包括节日、生日、联系人这类特殊日历）
+async function ownedCalendars(l: Link) {
+  const out: { id: string; name: string; primary: boolean }[] = [];
+  let pageToken = "";
+  do {
+    const q = new URLSearchParams({ minAccessRole: "owner", maxResults: "250" });
+    if (pageToken) q.set("pageToken", pageToken);
+    const res = await gfetch(l, `/users/me/calendarList?${q}`);
+    if (!res.ok) throw new Error(await gerror(res));
+    const data: any = await res.json();
+    for (const c of data.items || []) {
+      if (c.deleted || String(c.id).includes("#")) continue; // 节日 / 生日 / 联系人 / 周数
+      out.push({ id: c.id, name: c.summaryOverride || c.summary || c.id, primary: !!c.primary || c.id === l.calendar_id });
+    }
+    pageToken = data.nextPageToken || "";
+  } while (pageToken);
+  if (!out.some((c) => c.id === l.calendar_id)) out.unshift({ id: l.calendar_id, name: l.gmail, primary: true });
+  return out;
+}
+
+/** 「设置」里的日历清单（勾选要同步哪些） */
+export async function listSyncCalendars(userId: number) {
+  const l: any = await db.getGoogleLink(userId);
+  if (!l) return [];
+  await refreshCalendars(l).catch((e) => console.error(e));
+  return (await db.listGoogleCals(userId)).map((c: any) => ({
+    id: c.calendar_id, name: c.name || c.calendar_id, enabled: !!c.enabled, primary: c.calendar_id === l.calendar_id,
+  })).sort((a: any, b: any) => Number(b.primary) - Number(a.primary) || String(a.name).localeCompare(String(b.name)));
+}
+// 把 Google 上的日历清单记下来：新日历 → 默认勾选；在 Google 删掉的日历 → 拿掉
+async function refreshCalendars(l: any) {
+  const cals = await ownedCalendars(l);
+  const known = new Map((await db.listGoogleCals(l.user_id)).map((c: any) => [c.calendar_id, c]));
+  for (const c of cals) if (!known.has(c.id) || (known.get(c.id) as any).name !== c.name) await db.upsertGoogleCal(l.user_id, c.id, c.name);
+  for (const id of known.keys()) if (!cals.some((c) => c.id === id) && id !== l.calendar_id) {
+    await stopCalWatch(l, known.get(id));
+    await db.removeGoogleCal(l.user_id, id);
+  }
+  return db.listGoogleCals(l.user_id);
+}
+
+/** 勾选 / 取消勾选某个日历。取消：App 里来自那个日历的行程会从 App 拿掉（Google 上不动） */
+export async function setCalendarEnabled(userId: number, calendarId: string, enabled: boolean) {
+  const l: any = await db.getGoogleLink(userId);
+  if (!l) throw new Error("你还没连接 Google 日历");
+  if (calendarId === l.calendar_id && !enabled) throw new Error("主日历一定要同步（App 新增的行程会写进这里）");
+  const cal = (await db.listGoogleCals(userId)).find((c: any) => c.calendar_id === calendarId);
+  if (!cal) throw new Error("找不到这个日历");
+  if (!enabled) {
+    await stopCalWatch(l, cal);
+    for (const { event_id } of await db.eventsFromCalendar(userId, calendarId)) {
+      // 只删 App 里的（和其他人 Google 里的副本）；这个人自己的 Google 日历不动
+      const others = (await db.listEventGoogle(event_id)).filter((m: any) => m.user_id !== userId);
+      const photos = await db.listPhotos(event_id);
+      if (await db.deleteEvent(event_id)) {
+        for (const p of photos) await deletePhotoData(p.blob_key);
+        await deleteGoogleEvents(others as any);
+      }
+    }
+  }
+  await db.setCalEnabled(userId, calendarId, enabled); // 重新勾选 → 下次读取会全部重新读入
+  return { ok: true };
+}
+
 async function pullOnce(userId: number, siteUrl: string, deadline: number) {
-  // sync_token 以 "p:" 开头 = 第一次完整读取还没读完，记着读到哪一页
   const l: any = await db.getGoogleLink(userId);
   if (!l?.calendar_id) return { ok: false, skipped: true };
   const user = await db.getUser(userId);
-  const who = `${user?.name || l.gmail} · Google`;
-  const { timezone } = await getSettings();
-  let pageToken: string | null = l.sync_token?.startsWith("p:") ? l.sync_token.slice(2) : null;
-  let syncToken: string | null = l.sync_token?.startsWith("p:") ? null : l.sync_token;
-  let done = false;
-  let created = 0, updated = 0, deleted = 0;
-  const touched = new Set<number>();   // 在 Google 修改的 → 推给其他人
-  const createdIds = new Set<number>(); // 在 Google 新增的 → 也写回这个人的 Google（加上 App 的标记，之后才认得出来）
+  const ctx = {
+    l, userId, siteUrl, deadline,
+    who: `${user?.name || l.gmail} · Google`,
+    settings: await getSettings(),
+    created: 0, updated: 0, deleted: 0,
+    touched: new Set<number>(),    // 在 Google 修改的 → 推给其他人
+    createdIds: new Set<number>(), // 在 Google 新增的 → 推给其他人
+  };
+  let done = true;
   try {
-    for (;;) {
-      const q = new URLSearchParams({ maxResults: "250", showDeleted: "true" });
-      if (pageToken) q.set("pageToken", pageToken);
-      else if (syncToken) q.set("syncToken", syncToken);
-      const res = await gfetch(l, `/calendars/${encodeURIComponent(l.calendar_id)}/events?${q}`);
-      if (res.status === 410) { syncToken = null; pageToken = null; await db.setLinkSync(userId, { sync_token: null }); continue; } // 位置过期 → 全部重读
-      if (!res.ok) throw new Error(await gerror(res));
-      const data: any = await res.json();
-      for (const ev of data.items || []) {
-        const map = await db.findEventGoogle(userId, ev.id);
-        if (ev.status === "cancelled") {
-          if (map) {
-            // 在 Google 删除了 → App 也删除，并删掉其他人 Google 日历里的那一笔
-            const others = (await db.listEventGoogle(map.event_id)).filter((m: any) => m.user_id !== userId);
-            const photos = await db.listPhotos(map.event_id);
-            if (await db.deleteEvent(map.event_id)) {
-              for (const p of photos) await deletePhotoData(p.blob_key);
-              await deleteGoogleEvents(others as any);
-              touched.delete(map.event_id);
-              createdIds.delete(map.event_id);
-              deleted++;
-            }
-          }
-          continue;
-        }
-        if (map) {
-          if (map.etag && map.etag === ev.etag) continue; // 是我们自己写的版本
-          const cur = await db.getEvent(map.event_id);
-          if (!cur) continue;
-          const g = fromGoogle(ev, timezone, false);
-          const diff: any = {};
-          for (const k of ["title", "start", "end", "label"]) if ((g as any)[k] !== (cur as any)[k] && !(g[k] == null && cur[k] == null)) diff[k] = (g as any)[k];
-          if (g.all_day !== !!cur.all_day) diff.all_day = g.all_day;
-          await db.setEventGoogle(map.event_id, userId, { google_event_id: ev.id, etag: ev.etag });
-          if (Object.keys(diff).length) { await db.updateEvent(map.event_id, diff, who); touched.add(map.event_id); updated++; }
-          continue;
-        }
-        // 没有对应：是在 Google 新增的
-        const own = ev.extendedProperties?.private?.familyCalendarId;
-        if (own && (await db.getEvent(Number(own)))) { // 本来就是 App 的行程，只是对应不见了 → 接回去
-          await db.setEventGoogle(Number(own), userId, { google_event_id: ev.id, etag: ev.etag });
-          continue;
-        }
-        const e = await db.createEvent({ ...fromGoogle(ev, timezone, true), remind: true }, who);
-        await db.setEventGoogle(e.id, userId, { google_event_id: ev.id, etag: ev.etag });
-        createdIds.add(e.id);
-        created++;
-      }
-      if (data.nextPageToken) {
-        pageToken = data.nextPageToken;
-        if (Date.now() > deadline) { await db.setLinkSync(userId, { sync_token: "p:" + pageToken }); break; } // 下次从这一页继续
-        continue;
-      }
-      if (data.nextSyncToken) await db.setLinkSync(userId, { sync_token: data.nextSyncToken });
-      done = true;
-      break;
+    const cals = (await refreshCalendars(l)).filter((c: any) => c.enabled);
+    for (const cal of cals) {
+      if (Date.now() > deadline) { done = false; break; }
+      if (!(await pullCalendar(ctx, cal))) { done = false; break; } // 还没读完 → 下次继续
     }
-    // 把改动推给其他人的 Google 日历（也会把这个人的那笔更新成 App 的格式）
-    // 推给其他人的 Google 日历（这个人的 Google 已经是最新的，不用再写）
-    // 只推给其他人：这个人的 Google 本来就有这一笔，再写回去会造成重复
-    for (const id of createdIds) { if (Date.now() > deadline + 8_000) break; await syncEvent(id, siteUrl, undefined, userId); }
-    for (const id of touched) { if (Date.now() > deadline + 8_000) break; await syncEvent(id, siteUrl, undefined, userId); }
-    return { ok: true, created, updated, deleted, done };
+    if (done) await db.setLinkSync(userId, { sync_token: "multi" }); // 旧栏位：标记已读过
+    // 推给其他人的 Google 日历（这个人的 Google 本来就有这一笔，不用再写，否则会重复）
+    for (const id of ctx.createdIds) { if (Date.now() > deadline + 8_000) break; await syncEvent(id, siteUrl, undefined, userId); }
+    for (const id of ctx.touched) { if (Date.now() > deadline + 8_000) break; await syncEvent(id, siteUrl, undefined, userId); }
+    return { ok: true, created: ctx.created, updated: ctx.updated, deleted: ctx.deleted, done };
   } catch (err: any) {
     console.error(`[Google 日历] 从 ${l.gmail} 读取失败：`, err?.message || err);
     return { ok: false, error: String(err?.message || err) };
+  }
+}
+
+/** 读取一个 Google 日历的变更；读完回传 true（sync_token 以 "p:" 开头 = 第一次完整读取还没读完，记着读到哪一页） */
+async function pullCalendar(ctx: any, cal: any) {
+  const { l, userId, deadline, who } = ctx;
+  const calId: string = cal.calendar_id;
+  const tz = ctx.settings.timezone;
+  const ownPrefix = googleIdFor(0, userId, ctx.settings.secret).slice(0, -1); // App 写进 Google 的活动 ID 开头
+  let pageToken: string | null = cal.sync_token?.startsWith("p:") ? cal.sync_token.slice(2) : null;
+  let syncToken: string | null = cal.sync_token?.startsWith("p:") ? null : cal.sync_token;
+  for (;;) {
+    const q = new URLSearchParams({ maxResults: "250", showDeleted: "true" });
+    if (pageToken) q.set("pageToken", pageToken);
+    else if (syncToken) q.set("syncToken", syncToken);
+    const res = await gfetch(l, `/calendars/${encodeURIComponent(calId)}/events?${q}`);
+    if (res.status === 410) { syncToken = null; pageToken = null; await db.setCalSync(userId, calId, null); continue; } // 位置过期 → 全部重读
+    if (res.status === 404) return true; // 日历刚被删掉，下次清单会拿掉
+    if (!res.ok) throw new Error(await gerror(res));
+    const data: any = await res.json();
+    for (const ev of data.items || []) {
+      const map = await db.findEventGoogle(userId, ev.id, calId);
+      if (ev.status === "cancelled") {
+        if (map) {
+          // 在 Google 删除了 → App 也删除，并删掉其他人 Google 日历里的那一笔
+          const others = (await db.listEventGoogle(map.event_id)).filter((m: any) => m.user_id !== userId);
+          const photos = await db.listPhotos(map.event_id);
+          if (await db.deleteEvent(map.event_id)) {
+            for (const p of photos) await deletePhotoData(p.blob_key);
+            await deleteGoogleEvents(others as any);
+            ctx.touched.delete(map.event_id);
+            ctx.createdIds.delete(map.event_id);
+            ctx.deleted++;
+          }
+        }
+        continue;
+      }
+      if (map) {
+        if (map.etag && map.etag === ev.etag) continue; // 是我们自己写的版本
+        const cur = await db.getEvent(map.event_id);
+        if (!cur) continue;
+        const g = fromGoogle(ev, tz, false);
+        const diff: any = {};
+        for (const k of ["title", "start", "end", "label"]) if ((g as any)[k] !== (cur as any)[k] && !(g[k] == null && cur[k] == null)) diff[k] = (g as any)[k];
+        if (g.all_day !== !!cur.all_day) diff.all_day = g.all_day;
+        await db.setEventGoogle(map.event_id, userId, { google_event_id: ev.id, calendar_id: calId, etag: ev.etag });
+        if (Object.keys(diff).length) { await db.updateEvent(map.event_id, diff, who); ctx.touched.add(map.event_id); ctx.updated++; }
+        continue;
+      }
+      // 没有对应：是在 Google 新增的
+      const own = ev.extendedProperties?.private?.familyCalendarId;
+      if (own && String(ev.id).startsWith(ownPrefix) && (await db.getEvent(Number(own)))) { // 本来就是 App 的行程，只是对应不见了 → 接回去
+        await db.setEventGoogle(Number(own), userId, { google_event_id: ev.id, calendar_id: calId, etag: ev.etag });
+        continue;
+      }
+      const e = await db.createEvent({ ...fromGoogle(ev, tz, true), remind: true }, who);
+      await db.setEventGoogle(e.id, userId, { google_event_id: ev.id, calendar_id: calId, etag: ev.etag });
+      ctx.createdIds.add(e.id);
+      ctx.created++;
+    }
+    if (data.nextPageToken) {
+      pageToken = data.nextPageToken;
+      if (Date.now() > deadline) { await db.setCalSync(userId, calId, "p:" + pageToken); return false; } // 下次从这一页继续
+      continue;
+    }
+    if (data.nextSyncToken) await db.setCalSync(userId, calId, data.nextSyncToken);
+    return true;
   }
 }
 
@@ -441,32 +521,43 @@ const WATCH_TTL = 30 * 86400; // 秒
 export async function ensureWatch(userId: number, siteUrl: string) {
   const l: any = await db.getGoogleLink(userId);
   if (!l?.calendar_id) return;
-  if (l.watch_id && l.watch_expires && new Date(l.watch_expires).getTime() > Date.now() + 2 * 86400_000) return; // 还有效
   const address = `${apiBase()}/api/google/push`;
   if (!address.startsWith("https://") && !env("GOOGLE_API_BASE")) return; // Google 只通知 https 网址
-  await stopWatch(l);
-  const id = crypto.randomUUID();
-  const token = `${userId}.${await sign(`watch:${userId}:${id}`)}`;
-  const res = await gfetch(l, `/calendars/${encodeURIComponent(l.calendar_id)}/events/watch`, {
-    method: "POST", body: JSON.stringify({ id, type: "web_hook", address, token, params: { ttl: String(WATCH_TTL) } }),
-  });
-  if (!res.ok) { console.error("[Google 日历] 无法开启推送通知：", await gerror(res)); return; }
-  const d: any = await res.json();
-  await db.setWatch(userId, { id, resource: d.resourceId || null, expires: new Date(Number(d.expiration) || Date.now() + WATCH_TTL * 1000) });
+  if (l.watch_id) await stopWatch({ ...l, onlyLegacy: true }); // 旧版：整个连接只有一个通知
+  for (const c of await db.listGoogleCals(userId)) {
+    if (!c.enabled) continue;
+    if (c.watch_id && c.watch_expires && new Date(c.watch_expires).getTime() > Date.now() + 2 * 86400_000) continue; // 还有效
+    await stopCalWatch(l, c);
+    const id = crypto.randomUUID();
+    const token = `${userId}.${await sign(`watch:${userId}:${id}`)}`;
+    const res = await gfetch(l, `/calendars/${encodeURIComponent(c.calendar_id)}/events/watch`, {
+      method: "POST", body: JSON.stringify({ id, type: "web_hook", address, token, params: { ttl: String(WATCH_TTL) } }),
+    });
+    if (!res.ok) { console.error(`[Google 日历] 无法开启推送通知（${c.name}）：`, await gerror(res)); continue; }
+    const d: any = await res.json();
+    await db.setCalWatch(userId, c.calendar_id, { id, resource: d.resourceId || null, expires: new Date(Number(d.expiration) || Date.now() + WATCH_TTL * 1000) });
+  }
+}
+async function stopCalWatch(l: any, c: any) {
+  if (!c?.watch_id || !c?.watch_resource) return;
+  await gfetch(l, "/channels/stop", { method: "POST", body: JSON.stringify({ id: c.watch_id, resourceId: c.watch_resource }) }).catch(() => {});
+  await db.setCalWatch(l.user_id, c.calendar_id, { id: null, resource: null, expires: null });
 }
 async function stopWatch(l: any) {
-  if (!l?.watch_id || !l?.watch_resource) return;
-  await gfetch(l, "/channels/stop", { method: "POST", body: JSON.stringify({ id: l.watch_id, resourceId: l.watch_resource }) }).catch(() => {});
-  await db.setWatch(l.user_id, { id: null, resource: null, expires: null });
+  if (l?.watch_id && l?.watch_resource) {
+    await gfetch(l, "/channels/stop", { method: "POST", body: JSON.stringify({ id: l.watch_id, resourceId: l.watch_resource }) }).catch(() => {});
+    await db.setWatch(l.user_id, { id: null, resource: null, expires: null });
+  }
+  if (l?.onlyLegacy) return;
+  for (const c of await db.listGoogleCals(l.user_id)) await stopCalWatch(l, c);
 }
-/** Google 的通知：验证是谁的频道，回传要读取的 userId（不是有效通知回传 null） */
 export async function pushTarget(req: Request) {
   const channel = req.headers.get("x-goog-channel-id") || "";
   const [uid, sig] = (req.headers.get("x-goog-channel-token") || "").split(".");
   const userId = Number(uid);
   if (!userId || !channel || !(await verify(`watch:${userId}:${channel}`, sig || ""))) return null;
   const l: any = await db.getGoogleLink(userId);
-  if (!l || l.watch_id !== channel) return null; // 旧频道
+  if (!l || (l.watch_id !== channel && !(await db.hasCalWatch(userId, channel)))) return null; // 旧频道
   if (req.headers.get("x-goog-resource-state") === "sync") return null; // 开通时的测试通知
   return userId;
 }

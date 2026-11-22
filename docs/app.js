@@ -697,6 +697,8 @@ async function renderSettings() {
     $("#gRedirectUri").textContent = state.config.googleRedirectUri || `${location.origin}/api/google/callback`;
     const ready = !!state.config.googleLoginReady;
     $("#gConnected").hidden = !me.google;
+    $("#calList").hidden = !me.google;
+    if (me.google) loadCalList();
     $("#gConnectForm").hidden = !!me.google;          // 没连接时一定显示：填 Gmail → 连接
     $("#gSetup").hidden = !!me.google || ready;
     $("#gExplain").hidden = !!me.google;               // 已连接就不显示长说明        // 管理员还没设定时，下面显示设定步骤
@@ -750,6 +752,30 @@ $("#waUsers").addEventListener("change", async (ev) => {
   box.disabled = true;
   try { await api(`/api/admin/users/${box.dataset.waUser}`, { method: "PATCH", body: { can_whatsapp: box.checked } }); toast(t("saved")); }
   catch (e) { box.checked = !box.checked; toast(e.message); }
+  box.disabled = false;
+});
+
+// 「我的日历」清单：勾选要同步哪些日历（主日历一定同步）
+async function loadCalList() {
+  const ul = $("#syncCals");
+  try {
+    const cals = await api("/api/google/calendars");
+    ul.innerHTML = cals.length ? cals.map((c) => `<li><label class="check"><input type="checkbox" data-cal="${esc(c.id)}" data-name="${esc(c.name)}" ${c.enabled ? "checked" : ""} ${c.primary ? "disabled" : ""} />
+      <span><b>${esc(c.name)}</b>${c.primary ? ` <span class="muted">${esc(t("cals_main"))}</span>` : ""}</span></label></li>`).join("")
+      : `<li class="muted">${esc(t("cals_none"))}</li>`;
+  } catch (e) { ul.innerHTML = `<li class="warn">${esc(e.message)}</li>`; }
+}
+$("#syncCals").addEventListener("change", async (ev) => {
+  const box = ev.target.closest("[data-cal]");
+  if (!box) return;
+  const name = box.dataset.name, enabled = box.checked;
+  if (!enabled && !(await askConfirm(t("cals_off_confirm", { name }), t("ok")))) { box.checked = true; return; }
+  box.disabled = true;
+  try {
+    await api(`/api/google/calendars/${encodeURIComponent(box.dataset.cal)}`, { method: "PUT", body: { enabled } });
+    toast(t(enabled ? "cals_on_done" : "cals_off_done", { name }));
+    if (enabled) pullGoogle(); else loadMonth();
+  } catch (e) { box.checked = !enabled; toast(e.message); }
   box.disabled = false;
 });
 

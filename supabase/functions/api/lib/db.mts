@@ -201,11 +201,13 @@ export async function saveGoogleLink(l: { user_id: number; gmail: string; refres
 }
 export async function deleteGoogleLink(userId: number) {
   await sql`DELETE FROM event_google WHERE user_id = ${userId}`;
+  await sql`DELETE FROM google_calendars WHERE user_id = ${userId}`;
   await sql`DELETE FROM google_links WHERE user_id = ${userId}`;
 }
 /** 改成同步另一个 Google 日历：换日历、清掉旧的对应和同步位置 */
 export async function switchGoogleCalendar(userId: number, calendarId: string, name: string | null) {
   await sql`DELETE FROM event_google WHERE user_id = ${userId}`;
+  await sql`DELETE FROM google_calendars WHERE user_id = ${userId}`;
   await sql`UPDATE google_links SET calendar_id = ${calendarId}, calendar_name = ${name}, sync_token = NULL, last_pull_at = NULL, watch_id = NULL, watch_resource = NULL, watch_expires = NULL WHERE user_id = ${userId}`;
 }
 export async function clearEventGoogle(userId: number) {
@@ -217,15 +219,49 @@ export async function getEventGoogle(eventId: number, userId: number) {
 export async function listEventGoogle(eventId: number) {
   return sql`SELECT * FROM event_google WHERE event_id = ${eventId}`;
 }
-export async function setEventGoogle(eventId: number, userId: number, f: { google_event_id: string; error?: string | null; etag?: string | null }) {
-  await sql`INSERT INTO event_google (event_id, user_id, google_event_id, synced_at, error, etag)
-    VALUES (${eventId}, ${userId}, ${f.google_event_id}, ${f.error ? null : new Date().toISOString()}, ${f.error ?? null}, ${f.etag ?? null})
+export async function setEventGoogle(eventId: number, userId: number, f: { google_event_id: string; calendar_id?: string | null; error?: string | null; etag?: string | null }) {
+  await sql`INSERT INTO event_google (event_id, user_id, google_event_id, calendar_id, synced_at, error, etag)
+    VALUES (${eventId}, ${userId}, ${f.google_event_id}, ${f.calendar_id ?? null}, ${f.error ? null : new Date().toISOString()}, ${f.error ?? null}, ${f.etag ?? null})
     ON CONFLICT (event_id, user_id) DO UPDATE SET google_event_id = EXCLUDED.google_event_id,
+      calendar_id = COALESCE(EXCLUDED.calendar_id, event_google.calendar_id),
       synced_at = COALESCE(EXCLUDED.synced_at, event_google.synced_at), error = EXCLUDED.error,
       etag = COALESCE(EXCLUDED.etag, event_google.etag)`;
 }
-export async function findEventGoogle(userId: number, googleEventId: string) {
-  return (await sql`SELECT * FROM event_google WHERE user_id = ${userId} AND google_event_id = ${googleEventId}`)[0] ?? null;
+export async function findEventGoogle(userId: number, googleEventId: string, calendarId: string) {
+  return (await sql`SELECT * FROM event_google WHERE user_id = ${userId} AND google_event_id = ${googleEventId}
+    AND COALESCE(calendar_id, (SELECT calendar_id FROM google_links WHERE user_id = ${userId})) = ${calendarId}`)[0] ?? null;
+}
+
+// ---------- 每个人同步的所有 Google 日历（「我的日历」） ----------
+export async function listGoogleCals(userId: number) {
+  return sql`SELECT * FROM google_calendars WHERE user_id = ${userId} ORDER BY calendar_id`;
+}
+export async function upsertGoogleCal(userId: number, calendarId: string, name: string | null) {
+  await sql`INSERT INTO google_calendars (user_id, calendar_id, name) VALUES (${userId}, ${calendarId}, ${name})
+    ON CONFLICT (user_id, calendar_id) DO UPDATE SET name = EXCLUDED.name`;
+}
+/** 日历在 Google 被删除了：只拿掉对应（App 里的行程保留） */
+export async function removeGoogleCal(userId: number, calendarId: string) {
+  await sql`DELETE FROM event_google WHERE user_id = ${userId} AND calendar_id = ${calendarId}`;
+  await sql`DELETE FROM google_calendars WHERE user_id = ${userId} AND calendar_id = ${calendarId}`;
+}
+export async function setCalSync(userId: number, calendarId: string, syncToken: string | null) {
+  await sql`UPDATE google_calendars SET sync_token = ${syncToken} WHERE user_id = ${userId} AND calendar_id = ${calendarId}`;
+}
+export async function setCalWatch(userId: number, calendarId: string, w: { id: string | null; resource: string | null; expires: Date | null }) {
+  await sql`UPDATE google_calendars SET watch_id = ${w.id}, watch_resource = ${w.resource}, watch_expires = ${w.expires}
+    WHERE user_id = ${userId} AND calendar_id = ${calendarId}`;
+}
+export async function setCalEnabled(userId: number, calendarId: string, enabled: boolean) {
+  return (await sql`UPDATE google_calendars SET enabled = ${enabled}, sync_token = NULL
+    WHERE user_id = ${userId} AND calendar_id = ${calendarId} RETURNING *`)[0] ?? null;
+}
+/** 取消勾选某个日历：App 里来自那个日历的行程（只删 App，不动 Google） */
+export async function eventsFromCalendar(userId: number, calendarId: string) {
+  return sql`SELECT event_id FROM event_google WHERE user_id = ${userId} AND calendar_id = ${calendarId}`;
+}
+export async function hasCalWatch(userId: number, channel: string) {
+  return (await sql`SELECT 1 FROM google_calendars WHERE user_id = ${userId} AND watch_id = ${channel}`).length > 0;
 }
 export async function deleteEventGoogle(eventId: number, userId: number) {
   await sql`DELETE FROM event_google WHERE event_id = ${eventId} AND user_id = ${userId}`;
