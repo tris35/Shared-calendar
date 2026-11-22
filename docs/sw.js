@@ -1,7 +1,7 @@
 // Service worker: makes the site installable as an app.
 // Network-first for the page files (always shows the newest design when online);
 // falls back to the saved copy when offline. API, photos and calendar feeds are never cached.
-const CACHE = "shared-calendar-v15";
+const CACHE = "shared-calendar-v16";
 // 相对路径：网站放在子资料夹（例如 GitHub Pages 的 /Shared-calendar/）也能用
 const SHELL = ["./", "index.html", "style.css", "app.js", "i18n.js", "config.js", "manifest.json", "icons/icon-192.png"];
 

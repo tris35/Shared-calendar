@@ -254,11 +254,13 @@
   <!-- 点日期：那天的行程 + 「新增」按钮 -->
   <dialog id="dayDialog" class="day-dialog">
     <div class="dd-head">
+      <div class="dd-date"><span id="ddDow"></span><b id="ddNum"></b></div>
       <h3 id="ddTitle"></h3>
       <button type="button" class="icon-btn" id="ddClose" data-i18n-aria="close">✕</button>
     </div>
     <button type="button" id="ddNew" class="day-new"><span>＋</span> <b data-i18n="new_event"></b></button>
-    <ul id="ddList" class="list"></ul>
+    <div id="ddAllDay" class="dd-allday"></div>
+    <div id="ddHours" class="dd-hours"></div>
   </dialog>
 
   <dialog id="detailDialog" class="sheet">

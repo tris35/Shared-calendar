@@ -192,25 +192,68 @@ function renderMonth() {
   renderDay();
 }
 // 点日期跳出的视窗：那天的行程清单
+const HOUR_PX = 52; // 时间轴：每小时的高度
 function openDayDialog() {
-  const k = dayKey(state.selected);
+  const k = dayKey(state.selected), sel = state.selected;
   const evs = eventsByDay()[k] || [];
-  $("#ddTitle").textContent = state.selected.toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "long" });
-  $("#ddList").innerHTML = evs.length ? evs.map((e) => `
-    <li class="item tinted${e.color ? " lbl" : ""}" data-id="${e.id}" style="--c:${esc(eventColor(e))}">
-      <span class="bar" style="background:${esc(eventColor(e))}"></span>
-      <div class="main"><div class="t">${esc(e.title)}</div>
-        <div class="s">${e.all_day ? esc(t("all_day")) : fmtTime(e.start) + (e.end ? " – " + fmtTime(e.end) : "")}${e.member_name ? " · " + esc((e.member_emoji ? e.member_emoji + " " : "") + e.member_name) : ""}${e.label ? " · " + esc(labelName(e.label)) : ""}</div></div>
-    </li>`).join("") : `<li class="empty">${esc(t("day_empty"))}</li>`;
+  const isToday = k === dayKey(new Date());
+  $("#ddDow").textContent = sel.toLocaleDateString(locale(), { weekday: "short" });
+  $("#ddNum").textContent = sel.getDate();
+  $("#ddNum").classList.toggle("today", isToday);
+  $("#ddTitle").textContent = sel.toLocaleDateString(locale(), { month: "long", year: "numeric" });
+  const who = (e) => (e.member_name ? " · " + esc((e.member_emoji ? e.member_emoji + " " : "") + e.member_name) : "");
+  // 全天（或跨日、不是今天开始的）放在最上面
+  const allDay = evs.filter((e) => e.all_day || dayKey(new Date(e.start)) !== k);
+  const timed = evs.filter((e) => !allDay.includes(e)).sort((x, y) => new Date(x.start) - new Date(y.start));
+  $("#ddAllDay").innerHTML = allDay.map((e) => `<button type="button" class="dd-ev${e.color ? " lbl" : ""}" data-id="${e.id}" style="--c:${esc(eventColor(e))}">
+      <b>${esc(e.title)}</b><span>${esc(t("all_day"))}${who(e)}</span></button>`).join("");
+  // 时间轴：小时线 + 依时间摆放的行程（重叠的并排）
+  const mins = (d) => d.getHours() * 60 + d.getMinutes();
+  const items = timed.map((e) => {
+    const s0 = mins(new Date(e.start));
+    const endD = e.end ? new Date(e.end) : null;
+    const e0 = endD && dayKey(endD) === k ? Math.max(mins(endD), s0 + 20) : endD ? 24 * 60 : s0 + 60;
+    return { e, s0, e0, col: 0, cols: 1 };
+  });
+  let group = [], groupEnd = -1; // 互相重叠的一组 → 分栏
+  const flush = () => { const n = Math.max(1, ...group.map((g) => g.col + 1)); group.forEach((g) => (g.cols = n)); group = []; };
+  for (const it of items) {
+    if (it.s0 >= groupEnd) { flush(); groupEnd = -1; }
+    const used = new Set(group.filter((g) => g.e0 > it.s0).map((g) => g.col));
+    let c = 0; while (used.has(c)) c++;
+    it.col = c; group.push(it); groupEnd = Math.max(groupEnd, it.e0);
+  }
+  flush();
+  let html = "";
+  for (let h = 0; h < 24; h++) {
+    const label = h === 0 ? "" : new Date(2000, 0, 1, h).toLocaleTimeString(locale(), { hour: "numeric" });
+    html += `<div class="dd-line" style="top:${h * HOUR_PX}px"><span>${esc(label)}</span></div>`;
+  }
+  html += items.map(({ e, s0, e0, col, cols }) => `<button type="button" class="dd-ev dd-block${e.color ? " lbl" : ""}" data-id="${e.id}"
+      style="--c:${esc(eventColor(e))};top:${(s0 / 60) * HOUR_PX}px;height:${Math.max(22, ((e0 - s0) / 60) * HOUR_PX - 2)}px;left:calc(${(col / cols) * 100}% + 2px);width:calc(${100 / cols}% - 4px)">
+      <b>${esc(e.title)}</b><span>${fmtTime(e.start)}${e.end ? " – " + fmtTime(e.end) : ""}${who(e)}</span></button>`).join("");
+  if (isToday) html += `<div class="dd-now" style="top:${(mins(new Date()) / 60) * HOUR_PX}px"></div>`;
+  $("#ddHours").innerHTML = `<div class="dd-grid" style="height:${24 * HOUR_PX}px"><div class="dd-events">${html}</div></div>`;
   if (!$("#dayDialog").open) $("#dayDialog").showModal();
+  // 卷到「现在」或第一个行程（没有就早上 8 点）
+  const focus = isToday ? mins(new Date()) / 60 - 1 : items.length ? items[0].s0 / 60 - 0.5 : 8;
+  $("#ddHours").scrollTop = Math.max(0, focus) * HOUR_PX;
 }
+function ddClick(ev) {
+  const evBtn = ev.target.closest(".dd-ev");
+  if (evBtn) { $("#dayDialog").close(); openDetail(Number(evBtn.dataset.id)); return; }
+  const grid = ev.target.closest(".dd-grid");
+  if (grid) { // 点空白：在那个小时新增
+    const y = ev.clientY - grid.getBoundingClientRect().top;
+    const hour = Math.min(23, Math.max(0, Math.floor(y / HOUR_PX)));
+    $("#dayDialog").close(); openEditor(null, state.selected, hour);
+  }
+}
+$("#ddHours").addEventListener("click", ddClick);
+$("#ddAllDay").addEventListener("click", ddClick);
 $("#ddClose").onclick = () => $("#dayDialog").close();
 $("#dayDialog").addEventListener("click", (ev) => { if (ev.target === $("#dayDialog")) $("#dayDialog").close(); }); // 点外面关闭
 $("#ddNew").onclick = () => { $("#dayDialog").close(); openEditor(null, state.selected); };
-$("#ddList").addEventListener("click", (ev) => {
-  const li = ev.target.closest(".item");
-  if (li) { $("#dayDialog").close(); openDetail(Number(li.dataset.id)); }
-});
 
 // 选中那天上面的按钮：新增这天的行程
 $("#dayNewBtn").onclick = () => openEditor(null, state.selected);
@@ -594,7 +637,7 @@ $("#formChatInput").addEventListener("keydown", (ev) => {
   if (ev.key === "Enter" && !ev.shiftKey && !ev.isComposing) { ev.preventDefault(); if (editing) sendFormChat(); }
 });
 
-function openEditor(e, day) {
+function openEditor(e, day, hour) {
   editing = e || null;
   formFiles = []; $("#formPreview").innerHTML = "";
   eventForm.reset();
@@ -617,7 +660,7 @@ function openEditor(e, day) {
     eventForm.customer_note.value = e.customer_note ?? "";
     eventForm.customer_auto.checked = e.customer_auto !== 0;
   } else {
-    const d = new Date(day || new Date()); d.setHours(10, 0, 0, 0);
+    const d = new Date(day || new Date()); d.setHours(hour ?? 10, 0, 0, 0);
     eventForm.start.value = toLocalInput(d.toISOString());
     eventForm.remind.checked = true;
     eventForm.customer_auto.checked = true;
