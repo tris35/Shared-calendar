@@ -16,7 +16,7 @@
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
   <meta name="mobile-web-app-capable" content="yes" />
   <title>Shared Calendar</title>
-  <link rel="stylesheet" href="style.css?v=90" />
+  <link rel="stylesheet" href="style.css?v=91" />
 </head>
 <body class="locked">
   <!-- 登录 / 注册（打开 App 前） -->
@@ -51,7 +51,7 @@
         <h2 class="fp-title" data-i18n="fp_title"></h2>
         <p class="hint" style="padding:0" id="fpHint" data-i18n="fp_hint"></p>
         <label><span data-i18n="f_gmail">Gmail</span><input id="fpEmail" type="email" inputmode="email" autocomplete="email" placeholder="yourname@gmail.com" /></label>
-        <button type="button" class="btn small fp-send" id="fpSend" data-i18n="fp_send"></button>
+        <div class="fp-send-row"><button type="button" class="btn small primary fp-send" id="fpSend" data-i18n="fp_send"></button><span id="fpWait" class="fp-wait"></span></div>
         <div id="fpStep2" hidden>
           <label><span><span data-i18n="fp_code"></span> <b class="req">*</b></span><input id="fpCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" class="fp-code" required /></label>
           <p id="fpTimer" class="fp-timer"></p>
@@ -570,8 +570,8 @@
   </dialog>
 
   <div id="toast" class="toast" role="status"></div>
-  <script src="config.js?v=90"></script>
-  <script src="app.js?v=90" type="module"></script>
+  <script src="config.js?v=91"></script>
+  <script src="app.js?v=91" type="module"></script>
   <script>
     if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
   </script>

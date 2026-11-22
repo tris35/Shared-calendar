@@ -881,3 +881,7 @@ body.viewer #detailMenuBtn, body.viewer #deleteEventBtn, body.viewer #editEventB
 .fp-timer.expired { color: #d64545; }
 #forgotForm #fpReset:disabled { opacity: .5; }
 #forgotForm .fp-send:disabled { opacity: .6; cursor: not-allowed; }
+.fp-send-row { display: flex; align-items: center; gap: 12px; margin: 14px 0 6px; }
+.fp-send-row .fp-send { margin: 0 !important; }
+#forgotForm .fp-send:disabled { background: #e3e6ec !important; color: #9aa3b2 !important; border-color: #e3e6ec !important; opacity: 1; box-shadow: none; }
+.fp-wait { font-size: 15px; font-weight: 800; color: var(--accent); font-variant-numeric: tabular-nums; }

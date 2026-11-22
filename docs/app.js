@@ -1,5 +1,5 @@
 // ===================== Shared Calendar / 共享日历 =====================
-import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=90";
+import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=91";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -1525,7 +1525,7 @@ function fpCountdown() { // 验证码 5 分钟倒数；过期就不能按「重�
   draw(); fpTick = setInterval(draw, 1000);
 }
 function showForgot(on) {
-  if (!on) { clearInterval(fpTick); clearInterval(fpWaitTick); $("#fpSend").disabled = false; $("#fpSend").textContent = t("fp_send"); }
+  if (!on) { clearInterval(fpTick); clearInterval(fpWaitTick); $("#fpWait").textContent = ""; $("#fpSend").disabled = false; $("#fpSend").textContent = t("fp_send"); }
   $("#authForm").hidden = on; $("#forgotForm").hidden = !on;
   document.querySelector(".auth-tabs").hidden = on; document.querySelector(".auth-foot").hidden = on;
   $("#fpError").textContent = "";
@@ -1556,8 +1556,9 @@ function fpResendWait() {
   const b = $("#fpSend"), until = Date.now() + 20000;
   const draw = () => {
     const left = Math.ceil((until - Date.now()) / 1000);
-    if (left > 0) { b.disabled = true; b.textContent = t("fp_resend_in", { n: left }); }
-    else { clearInterval(fpWaitTick); b.disabled = false; b.textContent = t("fp_resend"); }
+    b.textContent = t("fp_resend");
+    if (left > 0) { b.disabled = true; $("#fpWait").textContent = `⏳ ${left}s`; }
+    else { clearInterval(fpWaitTick); b.disabled = false; $("#fpWait").textContent = ""; }
   };
   draw(); fpWaitTick = setInterval(draw, 250);
 }
