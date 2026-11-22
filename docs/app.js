@@ -1,5 +1,5 @@
 // ===================== Shared Calendar / 共享日历 =====================
-import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=36";
+import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=37";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -428,7 +428,7 @@ function renderCustomer(e) {
   const has = !!(e.customer_phone || e.customer_note);
   $("#dCustomerRow").hidden = !has;
   if (!has) return;
-  $("#dCustomerPhone").textContent = e.customer_phone ? `📞 ${e.customer_phone}` : "";
+  $("#dCustomerPhone").textContent = [e.customer_name ? `👤 ${e.customer_name}` : "", e.customer_phone ? `📞 ${e.customer_phone}` : ""].filter(Boolean).join("   ");
   $("#dCustomerNote").textContent = e.customer_note || "";
   const st = $("#dCustomerStatus"), phone = e.customer_phone || "";
   const ready = !!state.config?.whatsapp, auto = e.customer_auto !== 0;
@@ -758,6 +758,7 @@ function openEditor(e, day, hour) {
     eventForm.remind.checked = !!e.remind;
     eventForm.notes.value = e.notes ?? "";
     eventForm.customer_phone.value = e.customer_phone ?? "";
+    eventForm.customer_name.value = e.customer_name ?? "";
     eventForm.customer_note.value = e.customer_note ?? "";
     eventForm.customer_auto.checked = e.customer_auto !== 0;
   } else {
@@ -828,6 +829,7 @@ eventForm.addEventListener("submit", async (ev) => {
     member_id: f.member_id.value ? Number(f.member_id.value) : null,
     label: selectedLabel(), remind: f.remind.checked, notes: f.notes.value.trim() || null,
     customer_phone: f.customer_phone.value.trim() || null, customer_note: f.customer_note.value.trim() || null,
+    customer_name: f.customer_name.value.trim() || null,
     customer_auto: f.customer_auto.checked,
   };
   const saveBtn = eventForm.querySelector('button[type="submit"]');

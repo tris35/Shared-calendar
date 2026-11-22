@@ -85,7 +85,7 @@ export async function handleApi(req: Request): Promise<Response> {
     // 没有 WhatsApp 权限 → 忽略客户电话 / 讯息 / 自动发送的修改
     const eventInput = async () => {
       const b = await body();
-      if (!canWhatsApp(me)) { delete b.customer_phone; delete b.customer_note; delete b.customer_auto; }
+      if (!canWhatsApp(me)) { delete b.customer_phone; delete b.customer_note; delete b.customer_auto; delete b.customer_name; }
       return b;
     };
     const eventDetail = async (eid: number) => {
@@ -297,7 +297,7 @@ export async function handleApi(req: Request): Promise<Response> {
       if (seg[1] === "wa-text" && method === "PUT") {
         const b = await body();
         await saveSettings({ waIntro: String(b.intro ?? "").slice(0, 300), waOutro: String(b.outro ?? "").slice(0, 300) });
-        const sample = { title: "Kenji pre-wedding shoot", start: new Date(Date.now() + 86400000).toISOString(), all_day: false, customer_note: "Please arrive 15 minutes early." };
+        const sample = { customer_name: "Kenji", title: "Kenji pre-wedding shoot", start: new Date(Date.now() + 86400000).toISOString(), all_day: false, customer_note: "Please arrive 15 minutes early." };
         return Response.json({ ok: true, preview: await customerText(sample) });
       }
       // 管理员名单：固定的（Supabase 密钥）＋ App 里加的

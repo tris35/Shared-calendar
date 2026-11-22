@@ -85,10 +85,10 @@ export async function createEvent(e: any, author?: string | null) {
   const start = toIso(e.start), end = toIso(e.end);
   if (!start) throw new Error("请填写开始时间");
   if (end && end < start) throw new Error("结束时间不能早于开始时间");
-  const [r] = await sql`INSERT INTO events (title, start, "end", all_day, notes, label, member_id, remind, created_by, customer_phone, customer_note, customer_auto)
+  const [r] = await sql`INSERT INTO events (title, start, "end", all_day, notes, label, member_id, remind, created_by, customer_phone, customer_note, customer_auto, customer_name)
     VALUES (${title}, ${start}, ${end}, ${!!e.all_day}, ${clean(e.notes, 5000)}, ${checkLabel(e.label)},
             ${e.member_id ?? null}, ${e.remind === undefined ? true : !!e.remind}, ${clean(author, 60)},
-            ${clean(e.customer_phone, 40)}, ${clean(e.customer_note, 2000)}, ${e.customer_auto === undefined ? true : !!e.customer_auto})
+            ${clean(e.customer_phone, 40)}, ${clean(e.customer_note, 2000)}, ${e.customer_auto === undefined ? true : !!e.customer_auto}, ${clean(e.customer_name, 80)})
     RETURNING id`;
   await logEvent(r.id, author, "created");
   return getEvent(r.id);
@@ -121,6 +121,7 @@ export async function updateEvent(id: number, e: any, author?: string | null) {
     member_id: e.member_id !== undefined ? e.member_id : old.member_id,
     remind: e.remind !== undefined ? !!e.remind : !!old.remind,
     customer_phone: e.customer_phone !== undefined ? clean(e.customer_phone, 40) : old.customer_phone,
+    customer_name: e.customer_name !== undefined ? clean(e.customer_name, 80) : old.customer_name,
     customer_note: e.customer_note !== undefined ? clean(e.customer_note, 2000) : old.customer_note,
     customer_auto: e.customer_auto !== undefined ? !!e.customer_auto : old.customer_auto !== 0,
   };
@@ -129,7 +130,7 @@ export async function updateEvent(id: number, e: any, author?: string | null) {
   if (next.end && next.end < next.start) throw new Error("结束时间不能早于开始时间");
   await sql`UPDATE events SET title = ${next.title}, start = ${next.start}, "end" = ${next.end}, all_day = ${next.all_day},
     notes = ${next.notes}, label = ${next.label}, member_id = ${next.member_id}, remind = ${next.remind},
-    customer_phone = ${next.customer_phone}, customer_note = ${next.customer_note}, customer_auto = ${next.customer_auto} WHERE id = ${id}`;
+    customer_phone = ${next.customer_phone}, customer_note = ${next.customer_note}, customer_auto = ${next.customer_auto}, customer_name = ${next.customer_name} WHERE id = ${id}`;
   // 变更纪录：「修改了标题、时间」
   const prev: any = { ...old, all_day: !!old.all_day, remind: !!old.remind, customer_auto: old.customer_auto !== 0 };
   // 电话、讯息或日期改了 → 之后会再发一次新的

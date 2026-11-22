@@ -16,7 +16,7 @@
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
   <meta name="mobile-web-app-capable" content="yes" />
   <title>Shared Calendar</title>
-  <link rel="stylesheet" href="style.css?v=36" />
+  <link rel="stylesheet" href="style.css?v=37" />
 </head>
 <body class="locked">
   <!-- 登录 / 注册（打开 App 前） -->
@@ -365,6 +365,7 @@
 
       <div class="customer-box">
         <span class="field-label" data-i18n="f_customer"></span>
+        <label><span data-i18n="f_customer_name"></span><input name="customer_name" autocomplete="off" maxlength="80" data-i18n-placeholder="f_customer_name_ph" /></label>
         <label><span data-i18n="f_customer_phone"></span><input name="customer_phone" type="tel" inputmode="tel" autocomplete="off" placeholder="012-345 6789" /></label>
         <label><span data-i18n="f_customer_note"></span><textarea name="customer_note" rows="4"></textarea></label>
         <label class="check"><input type="checkbox" name="customer_auto" /> <span data-i18n="f_customer_auto"></span></label>
@@ -447,8 +448,8 @@
   </dialog>
 
   <div id="toast" class="toast" role="status"></div>
-  <script src="config.js?v=36"></script>
-  <script src="app.js?v=36" type="module"></script>
+  <script src="config.js?v=37"></script>
+  <script src="app.js?v=37" type="module"></script>
   <script>
     if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
   </script>

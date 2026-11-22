@@ -42,10 +42,11 @@ export async function customerText(e: any, settings?: any) {
   const tz = s.timezone;
   const d = new Date(e.start);
   const fill = (x: string) => String(x || "")
+    .replaceAll("{user}", e.customer_name || "").replaceAll("{name}", e.customer_name || "")
     .replaceAll("{title}", e.title || "")
     .replaceAll("{date}", d.toLocaleDateString("en-GB", { timeZone: tz, weekday: "short", day: "numeric", month: "short" }))
     .replaceAll("{time}", e.all_day ? "" : d.toLocaleTimeString("en-US", { timeZone: tz, hour: "numeric", minute: "2-digit", hour12: true }));
-  return flattenNote([fill(s.waIntro || ""), e.customer_note || "", fill(s.waOutro || "")].filter((x) => x.trim()).join("\n"));
+  return flattenNote([fill(s.waIntro || ""), fill(e.customer_note || ""), fill(s.waOutro || "")].filter((x) => x.trim()).join("\n"));
 }
 export function flattenNote(note: string) {
   return String(note || "").replace(/\r/g, "").split("\n").map((l) => l.trim()).filter(Boolean).join(" | ")
