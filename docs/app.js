@@ -1,5 +1,5 @@
 // ===================== Shared Calendar / 共享日历 =====================
-import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=23";
+import { LANGS, t, setLang, getLang, locale, applyI18n } from "./i18n.js?v=24";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -620,10 +620,42 @@ const selectedLabel = () => $("#labelPicker [aria-checked=true]")?.dataset.label
 function setAllDay(on) {
   for (const name of ["start", "end"]) {
     const input = eventForm[name], v = input.value;
-    input.type = on ? "date" : "datetime-local";
     if (v) input.value = on ? v.slice(0, 10) : (v.length === 10 ? `${v}T${name === "start" ? "10:00" : "11:00"}` : v);
   }
+  fillDateTime();
 }
+
+// 日期 + 时间：点一下就选好（日期框 + 12 小时制时间选单，每 15 分钟）
+const TIME_OPTS = Array.from({ length: 96 }, (_, i) => `${pad(Math.floor(i / 4))}:${pad((i % 4) * 15)}`);
+const timeLabel = (hm) => { const [h, m] = hm.split(":").map(Number); return new Date(2000, 0, 1, h, m).toLocaleTimeString(timeLocale(), { hour: "numeric", minute: "2-digit", hour12: true }); };
+function fillTimeSelect(sel, value) {
+  const opts = value && !TIME_OPTS.includes(value) ? [...TIME_OPTS, value].sort() : TIME_OPTS; // 例如 4:43 PM 也保留
+  sel.innerHTML = opts.map((v) => `<option value="${v}">${esc(timeLabel(v))}</option>`).join("");
+  if (value) sel.value = value;
+}
+function fillDateTime() { // 隐藏栏位（start / end）→ 看得到的日期、时间
+  const allDay = eventForm.all_day.checked;
+  for (const [name, d, tm] of [["start", "#startDate", "#startTime"], ["end", "#endDate", "#endTime"]]) {
+    const v = eventForm[name].value;
+    $(d).value = v ? v.slice(0, 10) : "";
+    fillTimeSelect($(tm), v && v.length > 10 ? v.slice(11, 16) : name === "start" ? "10:00" : "11:00");
+    $(tm).hidden = allDay;
+  }
+}
+function readDateTime(changed) { // 看得到的日期、时间 → 隐藏栏位
+  const allDay = eventForm.all_day.checked;
+  const val = (d, tm) => ($(d).value ? (allDay ? $(d).value : `${$(d).value}T${$(tm).value}`) : "");
+  eventForm.start.value = val("#startDate", "#startTime");
+  eventForm.end.value = val("#endDate", "#endTime");
+  // 改了开始、结束却比开始早 → 结束自动改成开始后 1 小时（全天：同一天）
+  if (changed === "start" && eventForm.end.value && eventForm.end.value < eventForm.start.value) {
+    if (allDay) eventForm.end.value = eventForm.start.value;
+    else { const d = new Date(eventForm.start.value); d.setHours(d.getHours() + 1); eventForm.end.value = toLocalInput(d.toISOString()); }
+    fillDateTime();
+  }
+}
+["#startDate", "#startTime"].forEach((s) => $(s).addEventListener("change", () => readDateTime("start")));
+["#endDate", "#endTime"].forEach((s) => $(s).addEventListener("change", () => readDateTime("end")));
 $("#allDayCheck").addEventListener("change", (ev) => setAllDay(ev.target.checked));
 
 // 编辑表单里的「留言 / 照片」：已有行程 → 马上发出；新行程 → 按「保存」时一起发出
@@ -668,7 +700,6 @@ function openEditor(e, day, hour) {
   if (state.me?.can_whatsapp) loadWaUsage();
   $("#eventDialogTitle").textContent = e ? t("edit_event") : t("new_event");
   eventForm.all_day.checked = !!e?.all_day;
-  eventForm.start.type = eventForm.end.type = e?.all_day ? "date" : "datetime-local";
   if (e) {
     eventForm.title.value = e.title;
     eventForm.start.value = e.all_day ? toLocalInput(e.start).slice(0, 10) : toLocalInput(e.start);
@@ -685,6 +716,7 @@ function openEditor(e, day, hour) {
     eventForm.remind.checked = true;
     eventForm.customer_auto.checked = true;
   }
+  fillDateTime();
   renderLabelPicker(e?.label);
   $("#formChatInput").value = "";
   renderFormFeed();
@@ -719,6 +751,8 @@ eventForm.addEventListener("submit", async (ev) => {
   ev.preventDefault();
   const f = eventForm;
   if (f.member_id.value === NEW_MEMBER) { toast(t("pick_member_first")); return; }
+  readDateTime();
+  if (!f.start.value) { toast(t("save_failed", { error: t("f_start") })); $("#startDate").focus(); return; }
   const allDay = f.all_day.checked;
   const toIso = (v, endOfDay) => (!v ? null : allDay ? new Date(`${v}T${endOfDay ? "23:59" : "00:00"}`).toISOString() : fromLocalInput(v));
   const body = {

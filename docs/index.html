@@ -16,7 +16,7 @@
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
   <meta name="mobile-web-app-capable" content="yes" />
   <title>Shared Calendar</title>
-  <link rel="stylesheet" href="style.css?v=23" />
+  <link rel="stylesheet" href="style.css?v=24" />
 </head>
 <body class="locked">
   <!-- 登录 / 注册（打开 App 前） -->
@@ -323,8 +323,12 @@
       <label><span data-i18n="f_title"></span><input name="title" required data-i18n-placeholder="f_title_ph" /></label>
       <label class="check"><input type="checkbox" name="all_day" id="allDayCheck" /> <span data-i18n="f_allday"></span></label>
       <div class="row">
-        <label><span data-i18n="f_start"></span><input name="start" type="datetime-local" required /></label>
-        <label><span data-i18n="f_end"></span><input name="end" type="datetime-local" /></label>
+        <div class="dt-field"><span data-i18n="f_start"></span>
+          <input name="start" type="hidden" />
+          <div class="dt-pair"><input id="startDate" type="date" required aria-label="date" /><select id="startTime" aria-label="time"></select></div></div>
+        <div class="dt-field"><span data-i18n="f_end"></span>
+          <input name="end" type="hidden" />
+          <div class="dt-pair"><input id="endDate" type="date" aria-label="date" /><select id="endTime" aria-label="time"></select></div></div>
       </div>
       <label><span data-i18n="f_member"></span><select name="member_id" id="memberSelect"></select></label>
       <div id="newMemberRow" class="new-member" hidden>
@@ -425,8 +429,8 @@
   </dialog>
 
   <div id="toast" class="toast" role="status"></div>
-  <script src="config.js?v=23"></script>
-  <script src="app.js?v=23" type="module"></script>
+  <script src="config.js?v=24"></script>
+  <script src="app.js?v=24" type="module"></script>
   <script>
     if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
   </script>
