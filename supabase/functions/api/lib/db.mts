@@ -46,7 +46,7 @@ function outEvent(e: any) {
     ...e, start: iso(e.start), end: iso(e.end), created_at: iso(e.created_at),
     all_day: e.all_day ? 1 : 0, remind: e.remind ? 1 : 0,
     customer_auto: e.customer_auto === false ? 0 : 1, customer_sent_at: iso(e.customer_sent_at), done_at: iso(e.done_at),
-    color: e.label && LABELS[e.label] ? LABELS[e.label].hex : null,
+    color: e.label && LABELS[e.label] ? LABELS[e.label].hex : e.source_color || null, // 自己的颜色，或 Google 日历的颜色
     photo_count: Number(e.photo_count ?? 0), memo_count: Number(e.memo_count ?? 0),
     amount_total: e.amount_total == null ? null : Number(e.amount_total), amount_paid: e.amount_paid == null ? null : Number(e.amount_paid),
     check_total: Number(e.check_total ?? 0), check_done: Number(e.check_done ?? 0),
@@ -256,9 +256,9 @@ export async function listEventGoogle(eventId: number) {
   return sql`SELECT * FROM event_google WHERE event_id = ${eventId}`;
 }
 export async function setEventGoogle(eventId: number, userId: number, f: { google_event_id: string; calendar_id?: string | null; error?: string | null; etag?: string | null }) {
-  await sql`INSERT INTO event_google (event_id, user_id, google_event_id, calendar_id, synced_at, error, etag)
-    VALUES (${eventId}, ${userId}, ${f.google_event_id}, ${f.calendar_id ?? null}, ${f.error ? null : new Date().toISOString()}, ${f.error ?? null}, ${f.etag ?? null})
-    ON CONFLICT (event_id, user_id) DO UPDATE SET google_event_id = EXCLUDED.google_event_id,
+  await sql`INSERT INTO event_google (event_id, user_id, google_event_id, calendar_id, synced_at, error, etag, seen_at)
+    VALUES (${eventId}, ${userId}, ${f.google_event_id}, ${f.calendar_id ?? null}, ${f.error ? null : new Date().toISOString()}, ${f.error ?? null}, ${f.etag ?? null}, NOW())
+    ON CONFLICT (event_id, user_id) DO UPDATE SET google_event_id = EXCLUDED.google_event_id, seen_at = NOW(),
       calendar_id = COALESCE(EXCLUDED.calendar_id, event_google.calendar_id),
       synced_at = COALESCE(EXCLUDED.synced_at, event_google.synced_at), error = EXCLUDED.error,
       etag = COALESCE(EXCLUDED.etag, event_google.etag)`;
@@ -274,13 +274,41 @@ export async function findEventGoogle(userId: number, googleEventId: string, cal
     AND COALESCE(calendar_id, (SELECT calendar_id FROM google_links WHERE user_id = ${userId})) = ${calendarId}`)[0] ?? null;
 }
 
+/** 这本 Google 日历读进来的所有行程（google 活动 ID → App 行程） */
+// 旧的对应可能没有记 calendar_id（= 主日历）
+export async function listCalMappings(userId: number, calendarId: string) {
+  return sql`SELECT event_id, google_event_id, etag FROM event_google WHERE user_id = ${userId}
+    AND COALESCE(calendar_id, (SELECT calendar_id FROM google_links WHERE user_id = ${userId})) = ${calendarId}`;
+}
+/** 这一轮在 Google 上还看得到的活动 */
+export async function markGoogleSeen(userId: number, calendarId: string, ids: string[]) {
+  if (!ids.length) return;
+  await sql`UPDATE event_google SET seen_at = NOW() WHERE user_id = ${userId} AND google_event_id = ANY(${ids})
+    AND COALESCE(calendar_id, (SELECT calendar_id FROM google_links WHERE user_id = ${userId})) = ${calendarId}`;
+}
+/** 这一轮读完，这段时间里没再看到的（Google 已经没有了） */
+export async function unseenGoogleEvents(userId: number, calendarId: string, passStart: Date, from: string, to: string) {
+  return sql`SELECT eg.event_id FROM event_google eg JOIN events e ON e.id = eg.event_id
+    WHERE eg.user_id = ${userId}
+      AND COALESCE(eg.calendar_id, (SELECT calendar_id FROM google_links WHERE user_id = ${userId})) = ${calendarId}
+      AND eg.synced_at IS NOT NULL AND eg.error IS NULL -- 还没成功写进 Google 的 App 行程不算
+      AND COALESCE(eg.seen_at, 'epoch') < ${passStart.toISOString()}
+      AND e.start >= ${from} AND e.start < ${to}`;
+}
+
 // ---------- 每个人同步的所有 Google 日历（「我的日历」） ----------
 export async function listGoogleCals(userId: number) {
   return sql`SELECT * FROM google_calendars WHERE user_id = ${userId} ORDER BY calendar_id`;
 }
-export async function upsertGoogleCal(userId: number, calendarId: string, name: string | null) {
-  await sql`INSERT INTO google_calendars (user_id, calendar_id, name) VALUES (${userId}, ${calendarId}, ${name})
-    ON CONFLICT (user_id, calendar_id) DO UPDATE SET name = EXCLUDED.name`;
+export async function upsertGoogleCal(userId: number, calendarId: string, name: string | null, color: string | null = null) {
+  await sql`INSERT INTO google_calendars (user_id, calendar_id, name, color) VALUES (${userId}, ${calendarId}, ${name}, ${color})
+    ON CONFLICT (user_id, calendar_id) DO UPDATE SET name = EXCLUDED.name, color = EXCLUDED.color`;
+}
+/** 行程来自哪个 Google 日历 → 记下那个日历的颜色 */
+export async function applyCalendarColors(userId: number) {
+  await sql`UPDATE events e SET source_color = gc.color
+    FROM event_google eg JOIN google_calendars gc ON gc.user_id = eg.user_id AND gc.calendar_id = eg.calendar_id
+    WHERE eg.event_id = e.id AND eg.user_id = ${userId} AND e.source_color IS DISTINCT FROM gc.color`;
 }
 /** 日历在 Google 被删除了：只拿掉对应（App 里的行程保留） */
 export async function removeGoogleCal(userId: number, calendarId: string) {
